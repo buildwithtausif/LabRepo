@@ -1,5 +1,20 @@
-// @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig } from "astro/config";
+import node from "@astrojs/node";
+import clerk from "@clerk/astro";
+import icon from "astro-icon";
 
-// https://astro.build/config
-export default defineConfig({});
+export default defineConfig({
+  integrations: [clerk(), icon()],
+  adapter: node({ mode: "standalone" }),
+  output: "server",
+  vite: {
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
+    },
+  },
+});

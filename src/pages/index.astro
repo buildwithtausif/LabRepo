@@ -1,17 +1,316 @@
 ---
-
+import Layout from '../Layouts/Layout.astro'
+import { Show } from '@clerk/astro/components'
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title="Home">
+  <Show when="signed-in">
+    <script>window.location.href = '/dashboard';</script>
+  </Show>
+
+  <Show when="signed-out">
+    <div class="landing">
+      <!-- Hero -->
+      <section class="hero">
+        <div class="container">
+          <div class="hero__content animate-fade-in-up">
+            <div class="hero__badge">
+              <span class="badge badge--accent"><i class="bi bi-hexagon-fill"></i> Built for Students</span>
+            </div>
+            <h1 class="hero__title">
+              Never lose your<br />
+              <span class="hero__highlight">lab work</span> again.
+            </h1>
+            <p class="hero__description">
+              LabRepo is a fast, minimal, and reliable repository that lets you safely 
+              organize and retrieve your college laboratory work. No more scattered 
+              files across USBs and laptops.
+            </p>
+            <div class="hero__actions">
+              <a href="#" id="hero-signup" class="btn btn--primary btn--lg">
+                Get Started — Free
+              </a>
+              <a href="#features" class="btn btn--secondary btn--lg">
+                Learn More ↓
+              </a>
+            </div>
+          </div>
+
+          <!-- Visual hierarchy illustration -->
+          <div class="hero__visual animate-fade-in-up stagger-2">
+            <div class="hierarchy">
+              <div class="hierarchy__item hierarchy__item--session">
+                <span class="hierarchy__icon"><i class="bi bi-calendar3"></i></span>
+                <span>2026–2027</span>
+                <span class="hierarchy__label">Academic Session</span>
+              </div>
+              <div class="hierarchy__connector"></div>
+              <div class="hierarchy__item hierarchy__item--subject">
+                <span class="hierarchy__icon"><i class="bi bi-book"></i></span>
+                <span>Machine Learning</span>
+                <span class="hierarchy__label">Subject</span>
+              </div>
+              <div class="hierarchy__connector"></div>
+              <div class="hierarchy__item hierarchy__item--work">
+                <span class="hierarchy__icon"><i class="bi bi-flask"></i></span>
+                <span>Experiment 5</span>
+                <span class="hierarchy__label">Work</span>
+              </div>
+              <div class="hierarchy__connector"></div>
+              <div class="hierarchy__item hierarchy__item--files">
+                <span class="hierarchy__icon"><i class="bi bi-file-earmark-text"></i></span>
+                <div class="hierarchy__files">
+                  <span class="hierarchy__file">train.py</span>
+                  <span class="hierarchy__file">notebook.ipynb</span>
+                  <span class="hierarchy__file">data.csv</span>
+                </div>
+                <span class="hierarchy__label">Files</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features" class="features">
+        <div class="container">
+          <h2 class="features__title animate-fade-in-up">Everything you need</h2>
+          <div class="features__grid grid grid-cols-3 gap-6">
+            <div class="glass-card animate-fade-in-up stagger-1">
+              <div class="feature__icon"><i class="bi bi-folder2-open"></i></div>
+              <h3>Organized Structure</h3>
+              <p>Academic sessions, subjects, and works — your files are always where you expect them.</p>
+            </div>
+            <div class="glass-card animate-fade-in-up stagger-2">
+              <div class="feature__icon"><i class="bi bi-cloud-arrow-up"></i></div>
+              <h3>Easy Uploads</h3>
+              <p>Drag & drop multiple files. Supports Python, Jupyter, C++, Java, and 30+ programming formats.</p>
+            </div>
+            <div class="glass-card animate-fade-in-up stagger-3">
+              <div class="feature__icon"><i class="bi bi-eye"></i></div>
+              <h3>In-Browser Preview</h3>
+              <p>Preview source code with syntax highlighting — no need to download first.</p>
+            </div>
+            <div class="glass-card animate-fade-in-up stagger-1">
+              <div class="feature__icon"><i class="bi bi-download"></i></div>
+              <h3>Bulk Downloads</h3>
+              <p>Download a single file, an entire subject, or your whole account as a ZIP archive.</p>
+            </div>
+            <div class="glass-card animate-fade-in-up stagger-2">
+              <div class="feature__icon"><i class="bi bi-trash3"></i></div>
+              <h3>Recycle Bin</h3>
+              <p>Deleted something by mistake? Restore it within 7 days from the recycle bin.</p>
+            </div>
+            <div class="glass-card animate-fade-in-up stagger-3">
+              <div class="feature__icon"><i class="bi bi-search"></i></div>
+              <h3>Instant Search</h3>
+              <p>Find any file, work, or subject instantly. Sort and filter to narrow results.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="cta">
+        <div class="container">
+          <div class="glass-card cta__card glass-card--no-hover">
+            <h2>Ready to secure your lab work?</h2>
+            <p>Join LabRepo and never worry about losing your files again.</p>
+            <a href="#" id="cta-signup" class="btn btn--primary btn--lg">Create Free Account</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </Show>
+</Layout>
+
+<script>
+  // Wire up sign-up buttons to Clerk
+  document.getElementById('hero-signup')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    (window as any).Clerk?.openSignUp();
+  });
+  document.getElementById('cta-signup')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    (window as any).Clerk?.openSignUp();
+  });
+</script>
+
+<style>
+  .landing {
+    overflow-x: hidden;
+  }
+
+  /* Hero */
+  .hero {
+    padding: var(--space-16) 0;
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+  }
+
+  .hero .container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-16);
+    align-items: center;
+  }
+
+  .hero__badge {
+    margin-bottom: var(--space-6);
+  }
+
+  .hero__title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: var(--space-6);
+    letter-spacing: -0.02em;
+  }
+
+  .hero__highlight {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero__description {
+    font-size: var(--font-size-lg);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-8);
+    max-width: 500px;
+  }
+
+  .hero__actions {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  /* Hierarchy visual */
+  .hierarchy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .hierarchy__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    backdrop-filter: blur(var(--glass-blur));
+    position: relative;
+    transition: all var(--transition-base);
+    min-width: 280px;
+  }
+
+  .hierarchy__item:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    transform: translateX(4px);
+  }
+
+  .hierarchy__icon {
+    font-size: var(--font-size-xl);
+  }
+
+  .hierarchy__label {
+    margin-left: auto;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    background: var(--glass-bg);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+  }
+
+  .hierarchy__connector {
+    width: 2px;
+    height: 16px;
+    background: var(--glass-border);
+    margin-left: var(--space-8);
+  }
+
+  .hierarchy__files {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .hierarchy__file {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Features */
+  .features {
+    padding: var(--space-16) 0;
+  }
+
+  .features__title {
+    text-align: center;
+    margin-bottom: var(--space-12);
+    font-size: var(--font-size-3xl);
+  }
+
+  .feature__icon {
+    font-size: 2rem;
+    margin-bottom: var(--space-4);
+  }
+
+  .features .glass-card h3 {
+    margin-bottom: var(--space-2);
+    font-size: var(--font-size-md);
+  }
+
+  .features .glass-card p {
+    font-size: var(--font-size-sm);
+  }
+
+  /* CTA */
+  .cta {
+    padding: var(--space-16) 0;
+  }
+
+  .cta__card {
+    text-align: center;
+    padding: var(--space-16) var(--space-8);
+    background: var(--gradient-surface);
+  }
+
+  .cta__card h2 {
+    margin-bottom: var(--space-3);
+  }
+
+  .cta__card p {
+    margin-bottom: var(--space-8);
+    font-size: var(--font-size-md);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .hero .container {
+      grid-template-columns: 1fr;
+      gap: var(--space-10);
+    }
+
+    .hero__title {
+      font-size: 2.25rem;
+    }
+
+    .hero {
+      padding: var(--space-10) 0;
+      min-height: auto;
+    }
+
+    .hero__visual {
+      display: none;
+    }
+  }
+</style>

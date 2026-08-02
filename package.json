@@ -12,6 +12,10 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^7.1.6"
+    "@astrojs/node": "^11.0.3",
+    "@clerk/astro": "^4.0.5",
+    "@iconify-json/bi": "^1.2.7",
+    "astro": "^7.1.6",
+    "astro-icon": "^1.1.5"
   }
 }

@@ -1,0 +1,326 @@
+---
+import Layout from '../../Layouts/Layout.astro'
+import { Show } from '@clerk/astro/components'
+
+const { id } = Astro.params;
+---
+
+<Layout title="Subject">
+  <Show when="signed-out">
+    <script>window.location.href = '/';</script>
+  </Show>
+
+  <Show when="signed-in">
+    <div class="container page-content" id="subject-page" data-subject-id={id}>
+      <div id="page-loading" class="empty-state">
+        <div class="spinner spinner--lg"></div>
+      </div>
+
+      <div id="page-content" style="display: none;">
+        <nav class="breadcrumb" id="breadcrumb">
+          <a href="/dashboard">Dashboard</a>
+          <span class="breadcrumb__separator">›</span>
+          <a href="#" id="session-link">Session</a>
+          <span class="breadcrumb__separator">›</span>
+          <span id="subject-name-crumb">Subject</span>
+        </nav>
+
+        <div class="page-header">
+          <div>
+            <h1 id="subject-title" style="font-size: var(--font-size-2xl);">Subject</h1>
+            <p id="subject-stats" class="page-header__subtitle"></p>
+          </div>
+          <div class="flex gap-3">
+            <button class="btn btn--secondary" id="btn-download-subject"><i class="bi bi-download"></i> Download ZIP</button>
+            <button class="btn btn--primary" id="btn-new-work">+ New Work</button>
+          </div>
+        </div>
+
+        <div id="works-grid" class="grid grid-cols-3 gap-6" style="margin-top: var(--space-8);"></div>
+
+        <div id="works-empty" class="empty-state" style="display: none;">
+          <div class="empty-state__icon"><i class="bi bi-flask"></i></div>
+          <h3 class="empty-state__title">No works yet</h3>
+          <p class="empty-state__description">Create a new work entry and upload your lab files.</p>
+          <button class="btn btn--primary btn--lg" id="btn-empty-new-work">+ Create Work</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Work + Upload Modal -->
+    <div id="work-modal" class="modal-overlay" style="display: none;">
+      <div class="modal" style="max-width: 560px;">
+        <h3 class="modal__title">New Work</h3>
+        <p class="modal__description">Create a work entry and optionally upload files.</p>
+        
+        <label style="font-size: var(--font-size-sm); color: var(--color-text-secondary); display: block; margin-bottom: var(--space-2);">Work Title</label>
+        <input type="text" class="input" id="work-title-input" autocomplete="off" />
+        <p style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-top: var(--space-1);">
+          Leave empty to use today's date.
+        </p>
+
+        <div style="margin-top: var(--space-6);">
+          <label style="font-size: var(--font-size-sm); color: var(--color-text-secondary); display: block; margin-bottom: var(--space-2);">Files (optional)</label>
+          <div class="drop-zone" id="drop-zone">
+            <div class="drop-zone__icon"><i class="bi bi-folder2-open"></i></div>
+            <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+              Drag & drop files here, or click to browse
+            </p>
+            <p style="color: var(--color-text-tertiary); font-size: var(--font-size-xs); margin-top: var(--space-2);">
+              Max 25 MB total
+            </p>
+            <input type="file" id="file-input" multiple style="display: none;" />
+          </div>
+          <div id="selected-files" style="margin-top: var(--space-3); max-height: 240px; overflow-y: auto; overflow-x: hidden; padding-right: var(--space-2);"></div>
+        </div>
+
+        <!-- Upload progress -->
+        <div id="upload-progress" style="display: none; margin-top: var(--space-4);">
+          <div class="progress-bar">
+            <div class="progress-bar__fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+          <p id="upload-status" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-top: var(--space-2);">Uploading...</p>
+        </div>
+
+        <div class="modal__actions" style="margin-top: var(--space-6);">
+          <button class="btn btn--ghost" id="work-modal-cancel">Cancel</button>
+          <button class="btn btn--primary" id="work-modal-save">Create Work</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const api = (window as any).__labrepo_api;
+        const showToast = (window as any).__labrepo_showToast;
+        const downloadBlob = (window as any).__labrepo_downloadBlob;
+        const formatSize = (window as any).__labrepo_formatSize;
+        const formatRelativeTime = (window as any).__labrepo_formatRelativeTime;
+
+        await new Promise<void>((r) => { const c = () => { if ((window as any).Clerk?.session) r(); else setTimeout(c, 100); }; c(); });
+
+        const subjectId = parseInt(document.getElementById('subject-page')!.dataset.subjectId || '0');
+
+        let subject: any;
+        try {
+          const result = await api.getSubject(subjectId);
+          subject = result.subject;
+        } catch {
+          showToast('Subject not found', 'error');
+          window.location.href = '/dashboard';
+          return;
+        }
+
+        document.getElementById('subject-title')!.textContent = subject.name;
+        document.getElementById('subject-name-crumb')!.textContent = subject.name;
+        const sessionLink = document.getElementById('session-link') as HTMLAnchorElement;
+        sessionLink.href = `/session/${subject.session_id}`;
+        sessionLink.textContent = subject.session_name;
+        document.title = `${subject.name} | LabRepo`;
+
+        await loadWorks();
+
+        async function loadWorks() {
+          try {
+            const { works } = await api.getWorks(subjectId);
+            
+            document.getElementById('page-loading')!.style.display = 'none';
+            document.getElementById('page-content')!.style.display = 'block';
+
+            if (works.length === 0) {
+              document.getElementById('works-grid')!.style.display = 'none';
+              document.getElementById('works-empty')!.style.display = 'flex';
+            } else {
+              document.getElementById('works-grid')!.style.display = 'grid';
+              document.getElementById('works-empty')!.style.display = 'none';
+              renderWorks(works);
+            }
+
+            const totalFiles = works.reduce((a: number, w: any) => a + (w.file_count || 0), 0);
+            const totalSize = works.reduce((a: number, w: any) => a + (w.total_size || 0), 0);
+            document.getElementById('subject-stats')!.textContent = 
+              `${works.length} work${works.length !== 1 ? 's' : ''} · ${totalFiles} file${totalFiles !== 1 ? 's' : ''} · ${formatSize(totalSize)}`;
+          } catch (e: any) {
+            showToast('Failed to load works', 'error');
+          }
+        }
+
+        function renderWorks(works: any[]) {
+          const grid = document.getElementById('works-grid')!;
+          grid.innerHTML = works.map((work: any, i: number) => `
+            <div class="glass-card glass-card--interactive animate-fade-in-up stagger-${Math.min(i + 1, 5)}" onclick="window.location.href='/work/${work.id}'">
+              <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+                <span style="font-size: 1.5rem;"><i class="bi bi-flask"></i></span>
+                <div class="card-actions flex gap-2" onclick="event.stopPropagation();">
+                  <button class="btn btn--ghost btn--sm btn-delete-work" data-id="${work.id}" data-title="${work.title}"><i class="bi bi-trash3"></i></button>
+                </div>
+              </div>
+              <h3 style="margin-bottom: var(--space-2); font-size: var(--font-size-md);">${work.title}</h3>
+              <div class="flex gap-4" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                <span>${work.file_count || 0} file${work.file_count !== 1 ? 's' : ''}</span>
+                <span>${formatSize(work.total_size || 0)}</span>
+                <span>${formatRelativeTime(work.updated_at || work.created_at)}</span>
+              </div>
+            </div>
+          `).join('');
+
+          grid.querySelectorAll('.btn-delete-work').forEach((btn: any) => {
+            btn.addEventListener('click', async (e: Event) => {
+              e.stopPropagation();
+              if (confirm(`Delete "${btn.dataset.title}"?`)) {
+                try {
+                  await api.deleteWork(parseInt(btn.dataset.id));
+                  showToast('Work moved to recycle bin', 'success');
+                  await loadWorks();
+                } catch (err: any) { showToast(err.message, 'error'); }
+              }
+            });
+          });
+        }
+
+        // New work modal with file upload
+        const workModal = document.getElementById('work-modal')!;
+        const titleInput = document.getElementById('work-title-input') as HTMLInputElement;
+        const dropZone = document.getElementById('drop-zone')!;
+        const fileInput = document.getElementById('file-input') as HTMLInputElement;
+        const selectedFilesDiv = document.getElementById('selected-files')!;
+        let selectedFiles: File[] = [];
+
+        // Default title = today's date
+        titleInput.placeholder = new Date().toISOString().split('T')[0];
+
+        function openWorkModal() {
+          workModal.style.display = 'flex';
+          titleInput.value = '';
+          selectedFiles = [];
+          fileInput.value = '';
+          selectedFilesDiv.innerHTML = '';
+          document.getElementById('upload-progress')!.style.display = 'none';
+          titleInput.focus();
+        }
+
+        document.getElementById('btn-new-work')!.addEventListener('click', openWorkModal);
+        document.getElementById('btn-empty-new-work')!.addEventListener('click', openWorkModal);
+        document.getElementById('work-modal-cancel')!.addEventListener('click', () => { workModal.style.display = 'none'; });
+        workModal.addEventListener('click', (e) => { if (e.target === workModal) workModal.style.display = 'none'; });
+
+        // Drag & drop
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-zone--active'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drop-zone--active'); });
+        dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('drop-zone--active');
+          if (e.dataTransfer?.files) handleFiles(Array.from(e.dataTransfer.files));
+        });
+
+        fileInput.addEventListener('change', () => {
+          if (fileInput.files) handleFiles(Array.from(fileInput.files));
+        });
+
+        function handleFiles(files: File[]) {
+          selectedFiles = [...selectedFiles, ...files];
+          renderSelectedFiles();
+        }
+
+        function renderSelectedFiles() {
+          const totalSize = selectedFiles.reduce((a, f) => a + f.size, 0);
+          const tooLarge = totalSize > 25 * 1024 * 1024;
+
+          selectedFilesDiv.innerHTML = selectedFiles.map((f, i) => `
+            <div class="selected-file flex items-center justify-between" style="padding: var(--space-2) 0; border-bottom: 1px solid var(--glass-border); font-size: var(--font-size-xs);">
+              <span style="color: var(--color-text-secondary);"><i class="bi bi-file-earmark-text"></i> ${f.name}</span>
+              <span class="flex items-center gap-2">
+                <span style="color: var(--color-text-tertiary);">${formatSize(f.size)}</span>
+                <button class="btn btn--ghost btn--sm remove-file" data-index="${i}" style="padding: 2px 6px;">×</button>
+              </span>
+            </div>
+          `).join('');
+
+          if (selectedFiles.length > 0) {
+            selectedFilesDiv.innerHTML += `
+              <div style="margin-top: var(--space-2); font-size: var(--font-size-xs); color: ${tooLarge ? 'var(--color-danger)' : 'var(--color-text-tertiary)'};">
+                Total: ${formatSize(totalSize)} / 25 MB ${tooLarge ? '— exceeds limit!' : ''}
+              </div>
+            `;
+          }
+
+          selectedFilesDiv.querySelectorAll('.remove-file').forEach((btn: any) => {
+            btn.addEventListener('click', () => {
+              selectedFiles.splice(parseInt(btn.dataset.index), 1);
+              renderSelectedFiles();
+            });
+          });
+        }
+
+        // Save work
+        document.getElementById('work-modal-save')!.addEventListener('click', async () => {
+          const title = titleInput.value.trim() || undefined;
+          const saveBtn = document.getElementById('work-modal-save') as HTMLButtonElement;
+
+          try {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Creating...';
+
+            // Create work
+            const { work } = await api.createWork(subjectId, title);
+
+            // Upload files if any
+            if (selectedFiles.length > 0) {
+              const totalSize = selectedFiles.reduce((a, f) => a + f.size, 0);
+              if (totalSize > 25 * 1024 * 1024) {
+                showToast('Total file size exceeds 25 MB', 'error');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Create Work';
+                return;
+              }
+
+              document.getElementById('upload-progress')!.style.display = 'block';
+              document.getElementById('upload-status')!.textContent = `Uploading ${selectedFiles.length} file(s)...`;
+              document.getElementById('progress-fill')!.style.width = '50%';
+
+              await api.uploadFiles(work.id, selectedFiles);
+
+              document.getElementById('progress-fill')!.style.width = '100%';
+              document.getElementById('upload-status')!.textContent = 'Upload complete!';
+            }
+
+            showToast('Work created!', 'success');
+            workModal.style.display = 'none';
+            await loadWorks();
+          } catch (err: any) {
+            showToast(err.message, 'error');
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Create Work';
+          }
+        });
+
+        titleInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && selectedFiles.length === 0) document.getElementById('work-modal-save')!.click();
+          if (e.key === 'Escape') workModal.style.display = 'none';
+        });
+
+        // Download subject ZIP
+        document.getElementById('btn-download-subject')!.addEventListener('click', async () => {
+          try {
+            showToast('Preparing download...', 'info');
+            const blob = await api.downloadSubject(subjectId);
+            downloadBlob(blob, `${subject.name}.zip`);
+            showToast('Download started!', 'success');
+          } catch (err: any) { showToast(err.message, 'error'); }
+        });
+      });
+    </script>
+
+    <style>
+      .page-header__subtitle { font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
+      .card-actions { opacity: 0; transition: opacity var(--transition-fast); }
+      .glass-card:hover .card-actions { opacity: 1; }
+      @media (max-width: 768px) {
+        .page-header { flex-direction: column; align-items: flex-start !important; gap: var(--space-4); }
+        .card-actions { opacity: 1; }
+      }
+    </style>
+  </Show>
+</Layout>

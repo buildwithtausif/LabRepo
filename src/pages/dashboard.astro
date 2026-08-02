@@ -1,0 +1,336 @@
+---
+import Layout from '../Layouts/Layout.astro'
+import { Show } from '@clerk/astro/components'
+---
+
+<Layout title="Dashboard">
+  <Show when="signed-out">
+    <script>window.location.href = '/';</script>
+  </Show>
+
+  <Show when="signed-in">
+    <div class="container page-content" id="dashboard-page">
+      <!-- Loading state -->
+      <div id="dashboard-loading" class="empty-state">
+        <div class="spinner spinner--lg"></div>
+        <p class="empty-state__description">Loading your workspace...</p>
+      </div>
+
+      <!-- Dashboard content (hidden until loaded) -->
+      <div id="dashboard-content" style="display: none;">
+        <!-- Page header -->
+        <div class="page-header flex items-center justify-between">
+          <div>
+            <h1 class="page-header__title">Dashboard</h1>
+            <p class="page-header__subtitle" id="stats-line">Your lab work repository</p>
+          </div>
+          <div class="flex gap-3">
+            <button class="btn btn--secondary" id="btn-download-all" title="Download everything">
+              <i class="bi bi-download"></i> Backup All
+            </button>
+            <button class="btn btn--primary" id="btn-new-session">
+              + New Session
+            </button>
+          </div>
+        </div>
+
+        <!-- Sessions grid -->
+        <div id="sessions-grid" class="grid grid-cols-3 gap-6" style="margin-top: var(--space-8);"></div>
+
+        <!-- Empty state -->
+        <div id="sessions-empty" class="empty-state" style="display: none;">
+          <div class="empty-state__icon"><i class="bi bi-calendar3"></i></div>
+          <h3 class="empty-state__title">No academic sessions yet</h3>
+          <p class="empty-state__description">Create your first academic session to start organizing your lab work.</p>
+          <button class="btn btn--primary btn--lg" id="btn-empty-new-session">
+            + Create Academic Session
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Session Modal -->
+    <div id="session-modal" class="modal-overlay" style="display: none;">
+      <div class="modal">
+        <h3 class="modal__title" id="modal-title">New Academic Session</h3>
+        <p class="modal__description">Enter a name for your academic session (e.g., 2026–2027).</p>
+        <input type="text" class="input" id="session-name-input" placeholder="2026–2027" autocomplete="off" />
+        
+        <div style="margin-top: var(--space-4);">
+          <label class="flex items-center gap-3" style="cursor: pointer; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+            <input type="checkbox" id="auto-delete-check" style="accent-color: var(--color-accent);" />
+            Auto-delete after session ends
+          </label>
+          <div id="auto-delete-date-wrapper" style="display: none; margin-top: var(--space-3);">
+            <input type="date" class="input" id="auto-delete-date" />
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-top: var(--space-1);">
+              Content will be moved to recycle bin on this date.
+            </p>
+          </div>
+        </div>
+
+        <div class="modal__actions" style="margin-top: var(--space-6);">
+          <button class="btn btn--ghost" id="modal-cancel">Cancel</button>
+          <button class="btn btn--primary" id="modal-save">Create Session</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rename Modal -->
+    <div id="rename-modal" class="modal-overlay" style="display: none;">
+      <div class="modal">
+        <h3 class="modal__title">Rename Session</h3>
+        <input type="text" class="input" id="rename-input" placeholder="New name" autocomplete="off" />
+        <div class="modal__actions" style="margin-top: var(--space-6);">
+          <button class="btn btn--ghost" id="rename-cancel">Cancel</button>
+          <button class="btn btn--primary" id="rename-save">Rename</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const api = (window as any).__labrepo_api;
+        const showToast = (window as any).__labrepo_showToast;
+        const downloadBlob = (window as any).__labrepo_downloadBlob;
+
+        // Wait for Clerk to be ready
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if ((window as any).Clerk?.session) resolve();
+            else setTimeout(check, 100);
+          };
+          check();
+        });
+
+        // Check onboarding status
+        try {
+          const status = await api.getUserStatus();
+          if (!status.onboarding_completed) {
+            window.location.href = '/onboarding';
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to check onboarding status:', e);
+        }
+
+        // Load sessions
+        await loadSessions();
+
+        async function loadSessions() {
+          try {
+            const { sessions } = await api.getSessions();
+            
+            document.getElementById('dashboard-loading')!.style.display = 'none';
+            document.getElementById('dashboard-content')!.style.display = 'block';
+
+            if (sessions.length === 0) {
+              document.getElementById('sessions-grid')!.style.display = 'none';
+              document.getElementById('sessions-empty')!.style.display = 'flex';
+            } else {
+              document.getElementById('sessions-grid')!.style.display = 'grid';
+              document.getElementById('sessions-empty')!.style.display = 'none';
+              renderSessions(sessions);
+            }
+
+            // Update stats
+            const totalFiles = sessions.reduce((acc: number, s: any) => acc + (s.file_count || 0), 0);
+            const totalSubjects = sessions.reduce((acc: number, s: any) => acc + (s.subject_count || 0), 0);
+            document.getElementById('stats-line')!.textContent = 
+              `${sessions.length} session${sessions.length !== 1 ? 's' : ''} · ${totalSubjects} subject${totalSubjects !== 1 ? 's' : ''} · ${totalFiles} file${totalFiles !== 1 ? 's' : ''}`;
+          } catch (e) {
+            console.error('Failed to load sessions:', e);
+            showToast('Failed to load sessions', 'error');
+            document.getElementById('dashboard-loading')!.style.display = 'none';
+          }
+        }
+
+        function renderSessions(sessions: any[]) {
+          const grid = document.getElementById('sessions-grid')!;
+          grid.innerHTML = sessions.map((session: any, i: number) => `
+            <div class="glass-card glass-card--interactive animate-fade-in-up stagger-${Math.min(i + 1, 5)}" data-session-id="${session.id}" onclick="window.location.href='/session/${session.id}'">
+              <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+                <span style="font-size: 1.5rem;"><i class="bi bi-calendar3"></i></span>
+                <div class="session-actions flex gap-2" onclick="event.stopPropagation();">
+                  <button class="btn btn--ghost btn--sm btn-rename-session" data-id="${session.id}" data-name="${session.name}" title="Rename"><i class="bi bi-pencil"></i></button>
+                  <button class="btn btn--ghost btn--sm btn-delete-session" data-id="${session.id}" data-name="${session.name}" title="Delete"><i class="bi bi-trash3"></i></button>
+                </div>
+              </div>
+              <h3 style="margin-bottom: var(--space-2); font-size: var(--font-size-lg);">${session.name}</h3>
+              <div class="flex gap-4" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                <span>${session.subject_count || 0} subject${session.subject_count !== 1 ? 's' : ''}</span>
+                <span>${session.file_count || 0} file${session.file_count !== 1 ? 's' : ''}</span>
+              </div>
+              ${session.auto_delete ? `
+                <div style="margin-top: var(--space-3);">
+                  <span class="badge badge--warning">Auto-delete: ${session.auto_delete_date || 'enabled'}</span>
+                </div>
+              ` : ''}
+            </div>
+          `).join('');
+
+          // Wire up rename buttons
+          grid.querySelectorAll('.btn-rename-session').forEach((btn: any) => {
+            btn.addEventListener('click', (e: Event) => {
+              e.stopPropagation();
+              openRenameModal(parseInt(btn.dataset.id), btn.dataset.name);
+            });
+          });
+
+          // Wire up delete buttons
+          grid.querySelectorAll('.btn-delete-session').forEach((btn: any) => {
+            btn.addEventListener('click', async (e: Event) => {
+              e.stopPropagation();
+              if (confirm(`Delete "${btn.dataset.name}"? It will be moved to the recycle bin.`)) {
+                try {
+                  await api.deleteSession(parseInt(btn.dataset.id));
+                  showToast('Session moved to recycle bin', 'success');
+                  await loadSessions();
+                } catch (err: any) {
+                  showToast(err.message, 'error');
+                }
+              }
+            });
+          });
+        }
+
+        // New session modal
+        const sessionModal = document.getElementById('session-modal')!;
+        const sessionInput = document.getElementById('session-name-input') as HTMLInputElement;
+        const autoDeleteCheck = document.getElementById('auto-delete-check') as HTMLInputElement;
+        const autoDeleteWrapper = document.getElementById('auto-delete-date-wrapper')!;
+        const autoDeleteDate = document.getElementById('auto-delete-date') as HTMLInputElement;
+
+        function openSessionModal() {
+          sessionInput.value = '';
+          autoDeleteCheck.checked = false;
+          autoDeleteWrapper.style.display = 'none';
+          sessionModal.style.display = 'flex';
+          sessionInput.focus();
+
+          // Set default auto-delete date based on name
+          const now = new Date();
+          const endYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+          autoDeleteDate.value = `${endYear}-07-31`;
+        }
+
+        document.getElementById('btn-new-session')!.addEventListener('click', openSessionModal);
+        document.getElementById('btn-empty-new-session')!.addEventListener('click', openSessionModal);
+        document.getElementById('modal-cancel')!.addEventListener('click', () => { sessionModal.style.display = 'none'; });
+        
+        autoDeleteCheck.addEventListener('change', () => {
+          autoDeleteWrapper.style.display = autoDeleteCheck.checked ? 'block' : 'none';
+        });
+
+        sessionModal.addEventListener('click', (e) => {
+          if (e.target === sessionModal) sessionModal.style.display = 'none';
+        });
+
+        document.getElementById('modal-save')!.addEventListener('click', async () => {
+          const name = sessionInput.value.trim();
+          if (!name) {
+            showToast('Please enter a session name', 'warning');
+            return;
+          }
+          try {
+            await api.createSession(name, autoDeleteCheck.checked, autoDeleteCheck.checked ? autoDeleteDate.value : undefined);
+            showToast('Session created!', 'success');
+            sessionModal.style.display = 'none';
+            await loadSessions();
+          } catch (err: any) {
+            showToast(err.message, 'error');
+          }
+        });
+
+        sessionInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') document.getElementById('modal-save')!.click();
+          if (e.key === 'Escape') sessionModal.style.display = 'none';
+        });
+
+        // Rename modal
+        let renameSessionId: number | null = null;
+        const renameModal = document.getElementById('rename-modal')!;
+        const renameInput = document.getElementById('rename-input') as HTMLInputElement;
+
+        function openRenameModal(id: number, name: string) {
+          renameSessionId = id;
+          renameInput.value = name;
+          renameModal.style.display = 'flex';
+          renameInput.focus();
+          renameInput.select();
+        }
+
+        document.getElementById('rename-cancel')!.addEventListener('click', () => { renameModal.style.display = 'none'; });
+        renameModal.addEventListener('click', (e) => { if (e.target === renameModal) renameModal.style.display = 'none'; });
+
+        document.getElementById('rename-save')!.addEventListener('click', async () => {
+          if (renameSessionId === null) return;
+          const name = renameInput.value.trim();
+          if (!name) { showToast('Name cannot be empty', 'warning'); return; }
+          try {
+            await api.updateSession(renameSessionId, { name });
+            showToast('Session renamed', 'success');
+            renameModal.style.display = 'none';
+            await loadSessions();
+          } catch (err: any) {
+            showToast(err.message, 'error');
+          }
+        });
+
+        renameInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') document.getElementById('rename-save')!.click();
+          if (e.key === 'Escape') renameModal.style.display = 'none';
+        });
+
+        // Download all
+        document.getElementById('btn-download-all')!.addEventListener('click', async () => {
+          try {
+            showToast('Preparing backup...', 'info');
+            const blob = await api.downloadAll();
+            downloadBlob(blob, 'labrepo-backup.zip');
+            showToast('Backup downloaded!', 'success');
+          } catch (err: any) {
+            showToast(err.message, 'error');
+          }
+        });
+      });
+    </script>
+
+    <style>
+      .page-header {
+        margin-bottom: var(--space-2);
+      }
+
+      .page-header__title {
+        font-size: var(--font-size-3xl);
+        margin-bottom: var(--space-1);
+      }
+
+      .page-header__subtitle {
+        font-size: var(--font-size-sm);
+        color: var(--color-text-tertiary);
+      }
+
+      .session-actions {
+        opacity: 0;
+        transition: opacity var(--transition-fast);
+      }
+
+      .glass-card:hover .session-actions {
+        opacity: 1;
+      }
+
+      @media (max-width: 768px) {
+        .page-header {
+          flex-direction: column;
+          align-items: flex-start !important;
+          gap: var(--space-4);
+        }
+
+        .session-actions {
+          opacity: 1;
+        }
+      }
+    </style>
+  </Show>
+</Layout>

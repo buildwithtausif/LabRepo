@@ -1,0 +1,216 @@
+---
+import Layout from '../Layouts/Layout.astro'
+import { Show } from '@clerk/astro/components'
+---
+
+<Layout title="Search">
+  <Show when="signed-out">
+    <script>window.location.href = '/';</script>
+  </Show>
+
+  <Show when="signed-in">
+    <div class="container page-content">
+      <div class="page-header">
+        <h1 style="font-size: var(--font-size-2xl);"><i class="bi bi-search"></i> Search</h1>
+      </div>
+
+      <!-- Search bar -->
+      <div class="search-bar" style="margin-top: var(--space-6);">
+        <input type="text" class="input input--lg" id="search-input" placeholder="Search files, works, subjects..." autocomplete="off" />
+      </div>
+
+      <!-- Filters -->
+      <div class="filters flex gap-4 items-center" style="margin-top: var(--space-4); flex-wrap: wrap;">
+        <select class="input" id="filter-sort" style="width: auto; min-width: 160px;">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="a-z">A → Z</option>
+          <option value="z-a">Z → A</option>
+          <option value="recently-updated">Recently updated</option>
+        </select>
+
+        <select class="input" id="filter-session" style="width: auto; min-width: 160px;">
+          <option value="">All sessions</option>
+        </select>
+
+        <select class="input" id="filter-subject" style="width: auto; min-width: 160px;">
+          <option value="">All subjects</option>
+        </select>
+
+        <select class="input" id="filter-ext" style="width: auto; min-width: 120px;">
+          <option value="">All types</option>
+        </select>
+      </div>
+
+      <!-- Results -->
+      <div id="search-results" style="margin-top: var(--space-8);"></div>
+
+      <div id="search-empty" class="empty-state" style="display: none;">
+        <div class="empty-state__icon"><i class="bi bi-search"></i></div>
+        <h3 class="empty-state__title">No results found</h3>
+        <p class="empty-state__description">Try different search terms or adjust your filters.</p>
+      </div>
+
+      <div id="search-initial" class="empty-state">
+        <div class="empty-state__icon"><i class="bi bi-search"></i></div>
+        <h3 class="empty-state__title">Search your files</h3>
+        <p class="empty-state__description">Search by filename, work title, or subject name.</p>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const api = (window as any).__labrepo_api;
+        const showToast = (window as any).__labrepo_showToast;
+        const formatSize = (window as any).__labrepo_formatSize;
+        const formatRelativeTime = (window as any).__labrepo_formatRelativeTime;
+
+        await new Promise<void>((r) => { const c = () => { if ((window as any).Clerk?.session) r(); else setTimeout(c, 100); }; c(); });
+
+        // Load filter options
+        try {
+          const filters = await api.getSearchFilters();
+
+          const sessionSelect = document.getElementById('filter-session') as HTMLSelectElement;
+          filters.sessions.forEach((s: any) => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            sessionSelect.appendChild(opt);
+          });
+
+          const subjectSelect = document.getElementById('filter-subject') as HTMLSelectElement;
+          filters.subjects.forEach((s: any) => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            subjectSelect.appendChild(opt);
+          });
+
+          const extSelect = document.getElementById('filter-ext') as HTMLSelectElement;
+          filters.extensions.forEach((ext: string) => {
+            const opt = document.createElement('option');
+            opt.value = ext;
+            opt.textContent = `.${ext}`;
+            extSelect.appendChild(opt);
+          });
+        } catch {}
+
+        const searchInput = document.getElementById('search-input') as HTMLInputElement;
+        let debounceTimer: number;
+
+        function doSearch() {
+          clearTimeout(debounceTimer);
+          debounceTimer = window.setTimeout(async () => {
+            const q = searchInput.value.trim();
+            const sort = (document.getElementById('filter-sort') as HTMLSelectElement).value;
+            const session_id = (document.getElementById('filter-session') as HTMLSelectElement).value;
+            const subject_id = (document.getElementById('filter-subject') as HTMLSelectElement).value;
+            const extension = (document.getElementById('filter-ext') as HTMLSelectElement).value;
+
+            if (!q && !session_id && !subject_id && !extension) {
+              document.getElementById('search-results')!.innerHTML = '';
+              document.getElementById('search-empty')!.style.display = 'none';
+              document.getElementById('search-initial')!.style.display = 'flex';
+              return;
+            }
+
+            document.getElementById('search-initial')!.style.display = 'none';
+
+            try {
+              const results = await api.search({
+                q: q || undefined,
+                sort,
+                session_id: session_id ? parseInt(session_id) : undefined,
+                subject_id: subject_id ? parseInt(subject_id) : undefined,
+                extension: extension || undefined,
+              });
+
+              const totalResults = (results.files?.length || 0) + (results.works?.length || 0);
+
+              if (totalResults === 0) {
+                document.getElementById('search-results')!.innerHTML = '';
+                document.getElementById('search-empty')!.style.display = 'flex';
+              } else {
+                document.getElementById('search-empty')!.style.display = 'none';
+                renderResults(results);
+              }
+            } catch (e: any) {
+              showToast('Search failed', 'error');
+            }
+          }, 300);
+        }
+
+        searchInput.addEventListener('input', doSearch);
+        document.getElementById('filter-sort')!.addEventListener('change', doSearch);
+        document.getElementById('filter-session')!.addEventListener('change', doSearch);
+        document.getElementById('filter-subject')!.addEventListener('change', doSearch);
+        document.getElementById('filter-ext')!.addEventListener('change', doSearch);
+
+        searchInput.focus();
+
+        function renderResults(results: any) {
+          const container = document.getElementById('search-results')!;
+          let html = '';
+
+          if (results.files && results.files.length > 0) {
+            html += `<h3 style="margin-bottom: var(--space-4); font-size: var(--font-size-md); color: var(--color-text-secondary);">Files (${results.files.length})</h3>`;
+            html += results.files.map((file: any, i: number) => `
+              <a href="/work/${file.work_id}" class="search-result glass-card animate-fade-in-up stagger-${Math.min(i + 1, 5)}" style="display: block; text-decoration: none; padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3" style="min-width: 0;">
+                    <span><i class="bi bi-file-earmark-text"></i></span>
+                    <div style="min-width: 0;">
+                      <div style="font-weight: 500; font-size: var(--font-size-sm); color: var(--color-text-primary);">${file.filename}</div>
+                      <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                        ${file.session_name} › ${file.subject_name} › ${file.work_title}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex gap-3 items-center" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                    <span class="badge badge--accent" style="font-size: 10px;">.${file.extension}</span>
+                    <span>${formatSize(file.size_bytes)}</span>
+                    <span class="hide-mobile">${formatRelativeTime(file.created_at)}</span>
+                  </div>
+                </div>
+              </a>
+            `).join('');
+          }
+
+          if (results.works && results.works.length > 0) {
+            html += `<h3 style="margin-top: var(--space-8); margin-bottom: var(--space-4); font-size: var(--font-size-md); color: var(--color-text-secondary);">Works (${results.works.length})</h3>`;
+            html += results.works.map((work: any, i: number) => `
+              <a href="/work/${work.id}" class="search-result glass-card animate-fade-in-up" style="display: block; text-decoration: none; padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span><i class="bi bi-flask"></i></span>
+                    <div>
+                      <div style="font-weight: 500; font-size: var(--font-size-sm); color: var(--color-text-primary);">${work.title}</div>
+                      <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                        ${work.session_name} › ${work.subject_name} · ${work.file_count} files
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            `).join('');
+          }
+
+          container.innerHTML = html;
+        }
+      });
+    </script>
+
+    <style>
+      .search-bar { position: relative; }
+      .search-result:hover {
+        transform: translateY(-1px);
+        border-color: var(--glass-border-hover);
+      }
+      @media (max-width: 768px) {
+        .filters { flex-direction: column; }
+        .filters select { width: 100% !important; }
+      }
+    </style>
+  </Show>
+</Layout>

@@ -1,0 +1,223 @@
+---
+import { Show, UserButton, SignInButton, SignUpButton } from '@clerk/astro/components'
+
+const { title, showNav = true } = Astro.props
+
+const currentPath = Astro.url.pathname
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content="LabRepo — Safely organize and retrieve your college lab work. Never lose a file again." />
+    <title>{title} | LabRepo</title>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+    <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+  </head>
+  <body>
+    {showNav && (
+      <header class="app-header">
+        <div class="app-header__inner">
+          <div class="app-header__left">
+            <a href="/dashboard" class="app-header__logo">
+              <span class="app-header__logo-icon"><i class="bi bi-hexagon-fill"></i></span>
+              <span class="app-header__logo-text">LabRepo</span>
+            </a>
+          </div>
+          
+          <Show when="signed-in">
+            <nav class="app-header__nav hide-mobile">
+              <a href="/dashboard" class:list={["app-header__link", { active: currentPath === '/dashboard' }]}>
+                <span><i class="bi bi-grid-1x2"></i></span> Dashboard
+              </a>
+              <a href="/search" class:list={["app-header__link", { active: currentPath === '/search' }]}>
+                <span><i class="bi bi-search"></i></span> Search
+              </a>
+              <a href="/recycle-bin" class:list={["app-header__link", { active: currentPath === '/recycle-bin' }]}>
+                <span><i class="bi bi-trash3"></i></span> Recycle Bin
+              </a>
+            </nav>
+          </Show>
+
+          <div class="app-header__right">
+            <Show when="signed-out">
+              <SignInButton mode="modal" asChild={true}>
+                <button class="btn btn--ghost">Sign In</button>
+              </SignInButton>
+              <SignUpButton mode="modal" asChild={true}>
+                <button class="btn btn--primary">Get Started</button>
+              </SignUpButton>
+            </Show>
+            <Show when="signed-in">
+              <UserButton />
+            </Show>
+          </div>
+        </div>
+
+        <!-- Mobile nav -->
+        <Show when="signed-in">
+          <nav class="app-header__mobile-nav hide-desktop">
+            <a href="/dashboard" class:list={["app-header__mobile-link", { active: currentPath === '/dashboard' }]}>
+              <span><i class="bi bi-grid-1x2"></i></span>
+              <span>Home</span>
+            </a>
+            <a href="/search" class:list={["app-header__mobile-link", { active: currentPath === '/search' }]}>
+              <span><i class="bi bi-search"></i></span>
+              <span>Search</span>
+            </a>
+            <a href="/recycle-bin" class:list={["app-header__mobile-link", { active: currentPath === '/recycle-bin' }]}>
+              <span><i class="bi bi-trash3"></i></span>
+              <span>Bin</span>
+            </a>
+          </nav>
+        </Show>
+      </header>
+    )}
+
+    <main class={showNav ? 'app-main' : 'app-main--full'}>
+      <slot />
+    </main>
+
+    <script src="../scripts/api.ts"></script>
+  </body>
+</html>
+
+<style is:global>
+  @import '../styles/global.css';
+
+  /* --- App Header --- */
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(10, 14, 26, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .app-header__inner {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-6);
+    height: var(--header-height);
+  }
+
+  .app-header__left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+  }
+
+  .app-header__logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    text-decoration: none;
+    color: var(--color-text-primary);
+    font-weight: 700;
+    font-size: var(--font-size-lg);
+  }
+
+  .app-header__logo-icon {
+    font-size: var(--font-size-2xl);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .app-header__logo-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .app-header__nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .app-header__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    text-decoration: none;
+  }
+
+  .app-header__link:hover {
+    color: var(--color-text-primary);
+    background: var(--glass-bg);
+  }
+
+  .app-header__link.active {
+    color: var(--color-text-primary);
+    background: var(--glass-bg-active);
+  }
+
+  .app-header__right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  /* Mobile nav */
+  .app-header__mobile-nav {
+    display: flex;
+    justify-content: space-around;
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--glass-border);
+  }
+
+  .app-header__mobile-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition-fast);
+  }
+
+  .app-header__mobile-link.active {
+    color: var(--color-accent);
+  }
+
+  .app-header__mobile-link span:first-child {
+    font-size: var(--font-size-lg);
+  }
+
+  /* Main content */
+  .app-main {
+    min-height: calc(100vh - var(--header-height));
+    position: relative;
+    z-index: 1;
+  }
+
+  .app-main--full {
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+</style>

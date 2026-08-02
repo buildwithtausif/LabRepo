@@ -1,0 +1,743 @@
+---
+import Layout from '../Layouts/Layout.astro'
+import { Show } from '@clerk/astro/components'
+---
+
+<Layout title="Welcome to LabRepo" showNav={false}>
+  <Show when="signed-out">
+    <script>window.location.href = '/';</script>
+  </Show>
+
+  <Show when="signed-in">
+    <div class="onboarding" id="onboarding">
+      <!-- Progress bar -->
+      <div class="onboarding__progress">
+        <div class="onboarding__progress-bar">
+          <div class="onboarding__progress-fill" id="progress-fill" style="width: 16.66%"></div>
+        </div>
+        <span class="onboarding__step-label" id="step-label">Step 1 of 6</span>
+      </div>
+
+      <!-- Steps container -->
+      <div class="onboarding__steps" id="steps-container">
+
+        <!-- Step 1: Welcome -->
+        <div class="onboarding__step active" data-step="1">
+          <div class="onboarding__step-content">
+            <div class="welcome-icon animate-fade-in-scale"><i class="bi bi-hexagon-fill"></i></div>
+            <h1 class="animate-fade-in-up">Welcome to LabRepo</h1>
+            <p class="animate-fade-in-up stagger-1">
+              A safe, organized home for all your college lab work.
+              Never lose a file again.
+            </p>
+
+            <div class="hierarchy-diagram animate-fade-in-up stagger-2">
+              <div class="h-level h-level--1">
+                <span class="h-level__icon"><i class="bi bi-calendar3"></i></span>
+                <span class="h-level__text">Academic Session</span>
+                <span class="h-level__example">e.g., 2026–2027</span>
+              </div>
+              <div class="h-connector"></div>
+              <div class="h-level h-level--2">
+                <span class="h-level__icon"><i class="bi bi-book"></i></span>
+                <span class="h-level__text">Subject</span>
+                <span class="h-level__example">e.g., Machine Learning</span>
+              </div>
+              <div class="h-connector"></div>
+              <div class="h-level h-level--3">
+                <span class="h-level__icon"><i class="bi bi-flask"></i></span>
+                <span class="h-level__text">Work</span>
+                <span class="h-level__example">e.g., Experiment 5</span>
+              </div>
+              <div class="h-connector"></div>
+              <div class="h-level h-level--4">
+                <span class="h-level__icon"><i class="bi bi-file-earmark-text"></i></span>
+                <span class="h-level__text">Files</span>
+                <span class="h-level__example">train.py, data.csv</span>
+              </div>
+            </div>
+
+            <div class="onboarding__actions animate-fade-in-up stagger-3">
+              <button class="btn btn--primary btn--lg" id="btn-start">Let's Get Started</button>
+              <button class="btn btn--ghost btn-skip" data-skip="2">Skip</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Create First Session -->
+        <div class="onboarding__step" data-step="2">
+          <div class="onboarding__step-content">
+            <div class="step-icon"><i class="bi bi-calendar3"></i></div>
+            <h2>Create Your First Academic Session</h2>
+            <p>
+              An academic session groups all your work for a school year.
+              You can always add more later.
+            </p>
+
+            <div class="onboarding__form">
+              <input 
+                type="text" 
+                class="input input--lg" 
+                id="session-input" 
+                placeholder="e.g., 2026–2027"
+                autocomplete="off"
+              />
+              <p class="form-hint">Tip: Use the academic year format like "2026–2027"</p>
+
+              <label class="flex items-center gap-3" style="margin-top: var(--space-4); cursor: pointer; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                <input type="checkbox" id="onboard-auto-delete" style="accent-color: var(--color-accent);" />
+                Auto-delete after session ends
+              </label>
+              <div id="onboard-delete-date-wrap" style="display: none; margin-top: var(--space-3);">
+                <input type="date" class="input" id="onboard-delete-date" />
+              </div>
+            </div>
+
+            <div class="onboarding__actions">
+              <button class="btn btn--secondary" id="btn-back-1">← Back</button>
+              <button class="btn btn--primary btn--lg" id="btn-create-session">Create Session →</button>
+              <button class="btn btn--ghost btn-skip" data-skip="3">Skip</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Add Subjects -->
+        <div class="onboarding__step" data-step="3">
+          <div class="onboarding__step-content">
+            <div class="step-icon"><i class="bi bi-book"></i></div>
+            <h2>Add Your Subjects</h2>
+            <p>
+              Add the subjects you're taking this session. 
+              Type a name and press Enter to add.
+            </p>
+
+            <div class="onboarding__form">
+              <div class="subject-input-row">
+                <input 
+                  type="text" 
+                  class="input" 
+                  id="subject-input" 
+                  placeholder="e.g., Machine Learning"
+                  autocomplete="off"
+                />
+                <button class="btn btn--primary" id="btn-add-subject">Add</button>
+              </div>
+
+              <div class="subjects-list" id="subjects-list"></div>
+
+              <div class="subject-suggestions">
+                <p style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-bottom: var(--space-2);">
+                  Quick add common subjects:
+                </p>
+                <div class="flex gap-2" style="flex-wrap: wrap;">
+                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Data Structures">Data Structures</button>
+                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Machine Learning">Machine Learning</button>
+                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Database Systems">Database Systems</button>
+                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Operating Systems">Operating Systems</button>
+                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Computer Networks">Computer Networks</button>
+                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Web Development">Web Development</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="onboarding__actions">
+              <button class="btn btn--secondary" id="btn-back-2">← Back</button>
+              <button class="btn btn--primary btn--lg" id="btn-save-subjects">Continue →</button>
+              <button class="btn btn--ghost btn-skip" data-skip="4">Skip</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Upload Explainer -->
+        <div class="onboarding__step" data-step="4">
+          <div class="onboarding__step-content">
+            <div class="step-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+            <h2>How Uploads Work</h2>
+            <p>Uploading your lab work is simple. Here's how:</p>
+
+            <div class="upload-explainer">
+              <div class="upload-step">
+                <span class="upload-step__num">1</span>
+                <div>
+                  <strong>Select a subject</strong>
+                  <p>Choose which subject this work belongs to.</p>
+                </div>
+              </div>
+              <div class="upload-step">
+                <span class="upload-step__num">2</span>
+                <div>
+                  <strong>Name your work</strong>
+                  <p>Give it a title like "Experiment 5" or leave it as today's date.</p>
+                </div>
+              </div>
+              <div class="upload-step">
+                <span class="upload-step__num">3</span>
+                <div>
+                  <strong>Drop your files</strong>
+                  <p>Drag & drop or select multiple files. Up to 25 MB per upload.</p>
+                </div>
+              </div>
+              <div class="upload-step">
+                <span class="upload-step__num">4</span>
+                <div>
+                  <strong>Done!</strong>
+                  <p>Your files are safely stored and organized.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="supported-formats glass-card glass-card--no-hover">
+              <h4 style="margin-bottom: var(--space-2);">Supported file types</h4>
+              <p style="font-size: var(--font-size-xs);">
+                .py .ipynb .js .ts .c .cpp .java .go .rs .sql .html .css .json .md .csv .pdf .docx .xlsx .env and many more
+              </p>
+            </div>
+
+            <div class="onboarding__actions">
+              <button class="btn btn--secondary" id="btn-back-3">← Back</button>
+              <button class="btn btn--primary btn--lg" id="btn-continue-4">Continue →</button>
+              <button class="btn btn--ghost btn-skip" data-skip="5">Skip</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 5: Data Safety -->
+        <div class="onboarding__step" data-step="5">
+          <div class="onboarding__step-content">
+            <div class="step-icon"><i class="bi bi-shield-check"></i></div>
+            <h2>Your Data is Safe</h2>
+            <p>LabRepo protects your work with multiple safety nets.</p>
+
+            <div class="safety-features grid grid-cols-2 gap-4">
+              <div class="glass-card glass-card--no-hover">
+                <div style="font-size: 1.5rem; margin-bottom: var(--space-2);"><i class="bi bi-trash3"></i></div>
+                <h4>Recycle Bin</h4>
+                <p style="font-size: var(--font-size-xs);">Deleted files go to the recycle bin. Recover them within 7 days.</p>
+              </div>
+              <div class="glass-card glass-card--no-hover">
+                <div style="font-size: 1.5rem; margin-bottom: var(--space-2);"><i class="bi bi-download"></i></div>
+                <h4>Bulk Downloads</h4>
+                <p style="font-size: var(--font-size-xs);">Download an entire subject or session as a ZIP archive anytime.</p>
+              </div>
+              <div class="glass-card glass-card--no-hover">
+                <div style="font-size: 1.5rem; margin-bottom: var(--space-2);"><i class="bi bi-calendar3"></i></div>
+                <h4>Auto-Delete</h4>
+                <p style="font-size: var(--font-size-xs);">Optionally auto-delete old sessions after the academic year ends.</p>
+              </div>
+              <div class="glass-card glass-card--no-hover">
+                <div style="font-size: 1.5rem; margin-bottom: var(--space-2);"><i class="bi bi-lock"></i></div>
+                <h4>Private & Secure</h4>
+                <p style="font-size: var(--font-size-xs);">Only you can access your files. Authentication via Clerk.</p>
+              </div>
+            </div>
+
+            <div class="onboarding__actions">
+              <button class="btn btn--secondary" id="btn-back-4">← Back</button>
+              <button class="btn btn--primary btn--lg" id="btn-continue-5">Almost Done →</button>
+              <button class="btn btn--ghost btn-skip" data-skip="6">Skip</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 6: Finish -->
+        <div class="onboarding__step" data-step="6">
+          <div class="onboarding__step-content">
+            <div class="step-icon" style="font-size: 3rem;"><i class="bi bi-emoji-smile"></i></div>
+            <h2>You're All Set!</h2>
+            <p>
+              Your workspace is ready. Start by uploading your first lab work.
+            </p>
+
+            <div id="setup-summary" class="glass-card glass-card--no-hover" style="text-align: left; margin-top: var(--space-6);">
+              <h4 style="margin-bottom: var(--space-3);">Your Setup</h4>
+              <div id="summary-content">
+                <p style="font-size: var(--font-size-sm); color: var(--color-text-tertiary);">Loading...</p>
+              </div>
+            </div>
+
+            <div class="onboarding__actions">
+              <button class="btn btn--primary btn--lg" id="btn-finish">
+                Go to Dashboard →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const api = (window as any).__labrepo_api;
+        const showToast = (window as any).__labrepo_showToast;
+
+        // Wait for Clerk
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if ((window as any).Clerk?.session) resolve();
+            else setTimeout(check, 100);
+          };
+          check();
+        });
+
+        // Check if already onboarded
+        try {
+          const status = await api.getUserStatus();
+          if (status.onboarding_completed) {
+            window.location.href = '/dashboard';
+            return;
+          }
+        } catch {}
+
+        let currentStep = 1;
+        let createdSessionId: number | null = null;
+        let subjects: string[] = [];
+
+        const progressFill = document.getElementById('progress-fill')!;
+        const stepLabel = document.getElementById('step-label')!;
+
+        function goToStep(step: number) {
+          currentStep = step;
+          
+          // Update progress
+          progressFill.style.width = `${(step / 6) * 100}%`;
+          stepLabel.textContent = `Step ${step} of 6`;
+
+          // Show/hide steps
+          document.querySelectorAll('.onboarding__step').forEach((el) => {
+            const stepNum = parseInt((el as HTMLElement).dataset.step || '0');
+            el.classList.toggle('active', stepNum === step);
+          });
+        }
+
+        // Navigation
+        document.getElementById('btn-start')!.addEventListener('click', () => goToStep(2));
+        document.getElementById('btn-back-1')!.addEventListener('click', () => goToStep(1));
+        document.getElementById('btn-back-2')!.addEventListener('click', () => goToStep(2));
+        document.getElementById('btn-back-3')!.addEventListener('click', () => goToStep(3));
+        document.getElementById('btn-back-4')!.addEventListener('click', () => goToStep(4));
+        document.getElementById('btn-continue-4')!.addEventListener('click', () => goToStep(5));
+        document.getElementById('btn-continue-5')!.addEventListener('click', () => {
+          updateSummary();
+          goToStep(6);
+        });
+
+        // Skip buttons
+        document.querySelectorAll('.btn-skip').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const target = parseInt((btn as HTMLElement).dataset.skip || '0');
+            if (target === 6) updateSummary();
+            goToStep(target);
+          });
+        });
+
+        // Step 2: Create Session
+        const sessionInput = document.getElementById('session-input') as HTMLInputElement;
+        const autoDeleteCheck = document.getElementById('onboard-auto-delete') as HTMLInputElement;
+        const deleteDate = document.getElementById('onboard-delete-date') as HTMLInputElement;
+        const deleteDateWrap = document.getElementById('onboard-delete-date-wrap')!;
+
+        // Set default date
+        const now = new Date();
+        const endYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+        deleteDate.value = `${endYear}-07-31`;
+
+        autoDeleteCheck.addEventListener('change', () => {
+          deleteDateWrap.style.display = autoDeleteCheck.checked ? 'block' : 'none';
+        });
+
+        document.getElementById('btn-create-session')!.addEventListener('click', async () => {
+          const name = sessionInput.value.trim();
+          if (!name) {
+            showToast('Please enter a session name', 'warning');
+            sessionInput.focus();
+            return;
+          }
+          try {
+            const result = await api.createSession(
+              name, 
+              autoDeleteCheck.checked, 
+              autoDeleteCheck.checked ? deleteDate.value : undefined
+            );
+            createdSessionId = result.session.id;
+            showToast('Session created!', 'success');
+            goToStep(3);
+          } catch (err: any) {
+            showToast(err.message, 'error');
+          }
+        });
+
+        sessionInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') document.getElementById('btn-create-session')!.click();
+        });
+
+        // Step 3: Add Subjects
+        const subjectInput = document.getElementById('subject-input') as HTMLInputElement;
+        const subjectsList = document.getElementById('subjects-list')!;
+
+        function renderSubjects() {
+          subjectsList.innerHTML = subjects.map((name, i) => `
+            <div class="subject-chip animate-fade-in-scale">
+              <span>${name}</span>
+              <button class="subject-chip__remove" data-index="${i}">×</button>
+            </div>
+          `).join('');
+
+          subjectsList.querySelectorAll('.subject-chip__remove').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const idx = parseInt((btn as HTMLElement).dataset.index || '0');
+              subjects.splice(idx, 1);
+              renderSubjects();
+            });
+          });
+        }
+
+        function addSubject(name: string) {
+          const trimmed = name.trim();
+          if (!trimmed) return;
+          if (subjects.includes(trimmed)) {
+            showToast('Subject already added', 'warning');
+            return;
+          }
+          subjects.push(trimmed);
+          renderSubjects();
+          subjectInput.value = '';
+          subjectInput.focus();
+        }
+
+        document.getElementById('btn-add-subject')!.addEventListener('click', () => addSubject(subjectInput.value));
+        subjectInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') addSubject(subjectInput.value);
+        });
+
+        // Quick-add suggestions
+        document.querySelectorAll('.btn-suggest').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            addSubject((btn as HTMLElement).dataset.name || '');
+          });
+        });
+
+        document.getElementById('btn-save-subjects')!.addEventListener('click', async () => {
+          if (subjects.length > 0 && createdSessionId) {
+            try {
+              await api.createSubjectsBatch(createdSessionId, subjects);
+              showToast(`${subjects.length} subjects added!`, 'success');
+            } catch (err: any) {
+              showToast(err.message, 'error');
+            }
+          }
+          goToStep(4);
+        });
+
+        // Step 6: Summary & Finish
+        function updateSummary() {
+          const content = document.getElementById('summary-content')!;
+          let html = '';
+          
+          if (sessionInput.value.trim()) {
+            html += `<div class="summary-item"><i class="bi bi-calendar3"></i> Session: <strong>${sessionInput.value.trim()}</strong></div>`;
+          }
+          if (subjects.length > 0) {
+            html += `<div class="summary-item"><i class="bi bi-book"></i> Subjects: <strong>${subjects.join(', ')}</strong></div>`;
+          }
+          if (!html) {
+            html = '<p style="font-size: var(--font-size-sm); color: var(--color-text-tertiary);">No setup steps completed — you can configure everything from the dashboard.</p>';
+          }
+
+          content.innerHTML = html;
+        }
+
+        document.getElementById('btn-finish')!.addEventListener('click', async () => {
+          try {
+            await api.completeOnboarding();
+            window.location.href = '/dashboard';
+          } catch (err: any) {
+            showToast('Failed to complete onboarding', 'error');
+            // Go anyway
+            window.location.href = '/dashboard';
+          }
+        });
+      });
+    </script>
+
+    <style>
+      .onboarding {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .onboarding__progress {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(10, 14, 26, 0.9);
+        backdrop-filter: blur(20px);
+        padding: var(--space-4) var(--space-6);
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        border-bottom: 1px solid var(--glass-border);
+      }
+
+      .onboarding__progress-bar {
+        flex: 1;
+        height: 4px;
+        background: var(--glass-bg);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+      }
+
+      .onboarding__progress-fill {
+        height: 100%;
+        background: var(--gradient-primary);
+        border-radius: var(--radius-full);
+        transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .onboarding__step-label {
+        font-size: var(--font-size-xs);
+        color: var(--color-text-tertiary);
+        white-space: nowrap;
+      }
+
+      .onboarding__steps {
+        flex: 1;
+        position: relative;
+      }
+
+      .onboarding__step {
+        display: none;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 60px);
+        padding: var(--space-8) var(--space-6);
+      }
+
+      .onboarding__step.active {
+        display: flex;
+        animation: fadeInUp 400ms ease-out;
+      }
+
+      .onboarding__step-content {
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+      }
+
+      .onboarding__step-content h1,
+      .onboarding__step-content h2 {
+        margin-bottom: var(--space-3);
+      }
+
+      .onboarding__step-content > p {
+        margin-bottom: var(--space-8);
+        font-size: var(--font-size-md);
+      }
+
+      .welcome-icon {
+        font-size: 4rem;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: var(--space-4);
+      }
+
+      .step-icon {
+        font-size: 2.5rem;
+        margin-bottom: var(--space-4);
+      }
+
+      .onboarding__actions {
+        display: flex;
+        justify-content: center;
+        gap: var(--space-3);
+        margin-top: var(--space-8);
+        flex-wrap: wrap;
+      }
+
+      .onboarding__form {
+        text-align: left;
+        margin-top: var(--space-6);
+      }
+
+      .form-hint {
+        font-size: var(--font-size-xs);
+        color: var(--color-text-tertiary);
+        margin-top: var(--space-2);
+      }
+
+      /* Hierarchy diagram */
+      .hierarchy-diagram {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        margin-top: var(--space-8);
+      }
+
+      .h-level {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-5);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md);
+        min-width: 320px;
+        transition: all var(--transition-base);
+      }
+
+      .h-level:hover {
+        background: var(--glass-bg-hover);
+        transform: translateX(4px);
+      }
+
+      .h-level__icon { font-size: var(--font-size-lg); }
+      .h-level__text { font-weight: 500; font-size: var(--font-size-sm); }
+      .h-level__example { 
+        margin-left: auto; 
+        font-size: var(--font-size-xs); 
+        color: var(--color-text-tertiary);
+        font-style: italic;
+      }
+
+      .h-connector {
+        width: 2px;
+        height: 12px;
+        background: var(--glass-border);
+        margin-left: var(--space-8);
+      }
+
+      /* Subject input */
+      .subject-input-row {
+        display: flex;
+        gap: var(--space-3);
+      }
+
+      .subject-input-row .input { flex: 1; }
+
+      .subjects-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        margin-top: var(--space-4);
+        min-height: var(--space-8);
+      }
+
+      .subject-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-4);
+        background: var(--color-accent-subtle);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: var(--radius-full);
+        font-size: var(--font-size-sm);
+        color: var(--color-accent-hover);
+      }
+
+      .subject-chip__remove {
+        background: none;
+        border: none;
+        color: var(--color-accent-hover);
+        cursor: pointer;
+        font-size: var(--font-size-lg);
+        line-height: 1;
+        padding: 0;
+        opacity: 0.6;
+        transition: opacity var(--transition-fast);
+      }
+
+      .subject-chip__remove:hover {
+        opacity: 1;
+      }
+
+      .subject-suggestions {
+        margin-top: var(--space-6);
+      }
+
+      /* Upload explainer */
+      .upload-explainer {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        text-align: left;
+        margin-bottom: var(--space-6);
+      }
+
+      .upload-step {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-4);
+        padding: var(--space-4);
+        background: var(--glass-bg);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--glass-border);
+      }
+
+      .upload-step__num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        background: var(--gradient-primary);
+        border-radius: var(--radius-full);
+        font-size: var(--font-size-sm);
+        font-weight: 600;
+        color: white;
+      }
+
+      .upload-step strong {
+        display: block;
+        margin-bottom: 2px;
+        font-size: var(--font-size-sm);
+      }
+
+      .upload-step p {
+        font-size: var(--font-size-xs);
+        margin: 0;
+      }
+
+      .supported-formats {
+        text-align: left;
+      }
+
+      /* Safety features */
+      .safety-features {
+        text-align: left;
+        margin-bottom: var(--space-4);
+      }
+
+      .safety-features h4 {
+        font-size: var(--font-size-sm);
+        margin-bottom: var(--space-1);
+      }
+
+      /* Summary */
+      .summary-item {
+        padding: var(--space-2) 0;
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+        border-bottom: 1px solid var(--glass-border);
+      }
+
+      .summary-item:last-child {
+        border-bottom: none;
+      }
+
+      @media (max-width: 768px) {
+        .h-level {
+          min-width: auto;
+          width: 100%;
+        }
+
+        .safety-features {
+          grid-template-columns: 1fr !important;
+        }
+      }
+    </style>
+  </Show>
+</Layout>

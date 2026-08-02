@@ -22,3 +22,7 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# server data (SQLite + mock storage)
+server/data/
+server/dist/
