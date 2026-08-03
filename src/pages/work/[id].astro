@@ -24,28 +24,28 @@ const { id } = Astro.params;
           <span class="breadcrumb__separator">›</span>
           <a href="#" id="subject-link">Subject</a>
           <span class="breadcrumb__separator">›</span>
-          <span id="work-name-crumb">Work</span>
+          <span id="work-name-crumb" class="text-ink">Work</span>
         </nav>
 
-        <div class="page-header flex items-center justify-between">
+        <div class="page-header flex items-center justify-between mb-8">
           <div>
-            <h1 id="work-title" style="font-size: var(--font-size-2xl);">Work</h1>
-            <p id="work-stats" class="page-header__subtitle"></p>
+            <h1 id="work-title" class="text-display-lg">Work</h1>
+            <p id="work-stats" class="text-muted mt-2"></p>
           </div>
-          <div class="flex gap-3">
-            <button class="btn btn--secondary" id="btn-download-work"><i class="bi bi-download"></i> Download ZIP</button>
+          <div class="flex gap-4">
+            <button class="btn btn--secondary-pill" id="btn-download-work"><i class="bi bi-download"></i> Download ZIP</button>
             <button class="btn btn--primary" id="btn-upload-more">+ Upload Files</button>
           </div>
         </div>
 
         <!-- File list -->
-        <div id="files-list" style="margin-top: var(--space-8);"></div>
+        <div id="files-list"></div>
 
         <div id="files-empty" class="empty-state" style="display: none;">
-          <div class="empty-state__icon"><i class="bi bi-file-earmark-text"></i></div>
-          <h3 class="empty-state__title">No files yet</h3>
-          <p class="empty-state__description">Upload files to this work.</p>
-          <button class="btn btn--primary btn--lg" id="btn-empty-upload">+ Upload Files</button>
+          <div class="text-hero text-muted mb-4"><i class="bi bi-file-earmark-text"></i></div>
+          <h3 class="text-display-lg mb-2">No files yet</h3>
+          <p class="text-lead text-muted mb-8">Upload files to this work.</p>
+          <button class="btn btn--primary" id="btn-empty-upload">Upload Files</button>
         </div>
       </div>
     </div>
@@ -53,19 +53,19 @@ const { id } = Astro.params;
     <!-- Upload Modal -->
     <div id="upload-modal" class="modal-overlay" style="display: none;">
       <div class="modal" style="max-width: 520px;">
-        <h3 class="modal__title">Upload Files</h3>
+        <h3 class="text-body-strong mb-4">Upload Files</h3>
         <div class="drop-zone" id="drop-zone">
-          <div class="drop-zone__icon"><i class="bi bi-folder2-open"></i></div>
-          <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">Drag & drop files here, or click to browse</p>
-          <p style="color: var(--color-text-tertiary); font-size: var(--font-size-xs); margin-top: var(--space-2);">Max 25 MB total</p>
+          <div class="text-display-lg text-muted mb-2"><i class="bi bi-folder2-open"></i></div>
+          <p class="text-body-strong mb-1">Drag & drop files here, or click to browse</p>
+          <p class="text-caption text-muted">Max 25 MB total</p>
           <input type="file" id="file-input" multiple style="display: none;" />
         </div>
-        <div id="selected-files" style="margin-top: var(--space-3); max-height: 240px; overflow-y: auto; overflow-x: hidden; padding-right: var(--space-2);"></div>
-        <div id="upload-progress" style="display: none; margin-top: var(--space-4);">
+        <div id="selected-files" class="mt-4" style="max-height: 240px; overflow-y: auto; overflow-x: hidden; padding-right: 8px;"></div>
+        <div id="upload-progress" style="display: none;" class="mt-6">
           <div class="progress-bar"><div class="progress-bar__fill" id="progress-fill"></div></div>
-          <p id="upload-status" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-top: var(--space-2);"></p>
+          <p id="upload-status" class="text-caption text-muted mt-2"></p>
         </div>
-        <div class="modal__actions" style="margin-top: var(--space-6);">
+        <div class="flex justify-between gap-4 mt-8">
           <button class="btn btn--ghost" id="upload-cancel">Cancel</button>
           <button class="btn btn--primary" id="upload-save">Upload</button>
         </div>
@@ -78,14 +78,14 @@ const { id } = Astro.params;
         <div class="handle-bar"></div>
       </div>
       <div class="preview-panel__header">
-        <div class="flex items-center gap-3" style="min-width: 0;">
-          <button class="btn btn--icon btn--ghost" id="preview-close" aria-label="Close preview">
+        <div class="flex items-center gap-4 min-w-0">
+          <button class="btn btn--ghost p-1" id="preview-close" aria-label="Close preview">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
-          <span id="preview-filename" style="font-weight: 500; font-size: var(--font-size-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;"></span>
-          <span id="preview-size" class="badge badge--accent hide-mobile"></span>
+          <span id="preview-filename" class="text-body-strong text-ink truncate max-w-[200px]"></span>
+          <span id="preview-size" class="btn--dark-utility p-1 rounded hide-mobile text-caption"></span>
         </div>
-        <button class="btn btn--primary btn--sm" id="preview-download" style="box-shadow: none;">
+        <button class="btn btn--primary btn--sm" id="preview-download">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
           Download
         </button>
@@ -127,10 +127,8 @@ const { id } = Astro.params;
         subjectLink.href = `/subject/${work.subject_id}`;
         subjectLink.textContent = work.subject_name;
 
-        // Text-based extensions for preview
         const textExts = new Set(['py','js','mjs','cjs','jsx','ts','tsx','c','cpp','h','hpp','java','kt','cs','go','rs','swift','php','rb','r','scala','sql','html','css','scss','json','yaml','yml','xml','md','txt','csv','env','sh','bat','ps1','toml','ini','cfg','conf','log','dockerfile','tex','rtf']);
 
-        // Extension to language map for syntax highlighting
         const langMap: Record<string, string> = {
           py: 'python', js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
           c: 'c', h: 'c', hpp: 'cpp', cpp: 'cpp', java: 'java', kt: 'kotlin', cs: 'csharp', go: 'go', rs: 'rust',
@@ -170,38 +168,36 @@ const { id } = Astro.params;
 
         function renderFiles(files: any[]) {
           const list = document.getElementById('files-list')!;
-          list.innerHTML = files.map((file: any, i: number) => {
+          list.innerHTML = files.map((file: any) => {
             const isText = textExts.has(file.extension);
             return `
-              <div class="file-item glass-card animate-fade-in-up stagger-${Math.min(i + 1, 5)}" style="padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3" style="min-width: 0;">
-                    <span style="font-size: 1.2rem;">${isText ? '<i class="bi bi-file-earmark-code"></i>' : '<i class="bi bi-box"></i>'}</span>
-                    <div style="min-width: 0;">
-                      <div style="font-weight: 500; font-size: var(--font-size-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${file.filename}</div>
-                      <div class="flex gap-3" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
-                        <span class="badge badge--accent" style="font-size: 10px;">.${file.extension}</span>
+              <div class="store-utility-card animate-fade-in mb-4 px-6 py-4">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                  <div class="flex items-center gap-4 min-w-0" style="flex: 1 1 200px;">
+                    <span class="text-display-lg text-muted">${isText ? '<i class="bi bi-file-earmark-code"></i>' : '<i class="bi bi-box"></i>'}</span>
+                    <div class="min-w-0">
+                      <div class="text-body-strong truncate">${file.filename}</div>
+                      <div class="flex gap-4 items-center text-caption text-muted mt-1 flex-wrap">
+                        <span class="btn--dark-utility p-1 rounded">.${file.extension}</span>
                         <span>${formatSize(file.size_bytes)}</span>
                         <span>${formatRelativeTime(file.created_at)}</span>
                       </div>
                     </div>
                   </div>
-                  <div class="flex gap-2">
-                    ${isText ? `<button class="btn btn--ghost btn--sm btn-preview" data-id="${file.id}" data-name="${file.filename}" data-ext="${file.extension}"><i class="bi bi-eye"></i> Preview</button>` : ''}
-                    <button class="btn btn--secondary btn--sm btn-download-file" data-id="${file.id}" data-name="${file.filename}"><i class="bi bi-download"></i></button>
-                    <button class="btn btn--ghost btn--sm btn-delete-file" data-id="${file.id}" data-name="${file.filename}"><i class="bi bi-trash3"></i></button>
+                  <div class="flex gap-2 shrink-0 flex-wrap">
+                    ${isText ? `<button class="btn btn--secondary-pill btn-preview btn--sm" data-id="${file.id}" data-name="${file.filename}" data-ext="${file.extension}">Preview</button>` : ''}
+                    <button class="btn btn--secondary-pill btn-download-file btn--sm" data-id="${file.id}" data-name="${file.filename}"><i class="bi bi-download"></i></button>
+                    <button class="btn btn--ghost btn-delete-file btn--sm" data-id="${file.id}" data-name="${file.filename}" style="color: #ff3b30;"><i class="bi bi-trash3"></i></button>
                   </div>
                 </div>
               </div>
             `;
           }).join('');
 
-          // Preview buttons
           list.querySelectorAll('.btn-preview').forEach((btn: any) => {
             btn.addEventListener('click', () => openPreview(parseInt(btn.dataset.id), btn.dataset.name, btn.dataset.ext));
           });
 
-          // Download buttons
           list.querySelectorAll('.btn-download-file').forEach((btn: any) => {
             btn.addEventListener('click', async () => {
               try {
@@ -211,7 +207,6 @@ const { id } = Astro.params;
             });
           });
 
-          // Delete buttons
           list.querySelectorAll('.btn-delete-file').forEach((btn: any) => {
             btn.addEventListener('click', async () => {
               if (confirm(`Delete "${btn.dataset.name}"?`)) {
@@ -225,7 +220,6 @@ const { id } = Astro.params;
           });
         }
 
-        // File preview panel
         const previewPanel = document.getElementById('preview-panel')!;
         let currentPreviewId: number | null = null;
 
@@ -234,7 +228,7 @@ const { id } = Astro.params;
           previewPanel.style.display = 'flex';
           document.body.classList.add('preview-open');
           document.getElementById('preview-filename')!.textContent = filename;
-          document.getElementById('preview-content')!.innerHTML = '<div class="empty-state" style="padding: var(--space-8);"><div class="spinner"></div></div>';
+          document.getElementById('preview-content')!.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
 
           try {
             const result = await api.previewFile(fileId);
@@ -250,7 +244,6 @@ const { id } = Astro.params;
               <pre class="preview-code"><code class="language-${lang}">${escaped}</code></pre>
             `;
             
-            // Apply syntax highlighting
             const codeEl = document.querySelector('#preview-content code');
             if (codeEl && (window as any).hljs) {
               (window as any).hljs.highlightElement(codeEl);
@@ -261,7 +254,7 @@ const { id } = Astro.params;
           } catch (err: any) {
             document.getElementById('preview-content')!.innerHTML = `
               <div class="empty-state">
-                <p style="color: var(--color-danger);">Failed to load preview</p>
+                <p style="color: #ff3b30;">Failed to load preview</p>
               </div>
             `;
           }
@@ -285,7 +278,6 @@ const { id } = Astro.params;
           } catch (err: any) { showToast(err.message, 'error'); }
         });
 
-        // Upload modal
         const uploadModal = document.getElementById('upload-modal')!;
         const dropZone = document.getElementById('drop-zone')!;
         const fileInput = document.getElementById('file-input') as HTMLInputElement;
@@ -301,7 +293,7 @@ const { id } = Astro.params;
         }
 
         document.getElementById('btn-upload-more')!.addEventListener('click', openUploadModal);
-        document.getElementById('btn-empty-upload')!.addEventListener('click', openUploadModal);
+        document.getElementById('btn-empty-upload')?.addEventListener('click', openUploadModal);
         document.getElementById('upload-cancel')!.addEventListener('click', () => { uploadModal.style.display = 'none'; });
         uploadModal.addEventListener('click', (e) => { if (e.target === uploadModal) uploadModal.style.display = 'none'; });
 
@@ -328,11 +320,11 @@ const { id } = Astro.params;
           const total = selectedFiles.reduce((a, f) => a + f.size, 0);
           const tooLarge = total > 25 * 1024 * 1024;
           selectedFilesDiv.innerHTML = selectedFiles.map((f, i) => `
-            <div style="display: flex; justify-content: space-between; padding: var(--space-1) 0; font-size: var(--font-size-xs); color: var(--color-text-secondary);">
-              <span><i class="bi bi-file-earmark-text"></i> ${f.name}</span>
-              <span class="flex gap-2 items-center">${formatSize(f.size)} <button class="btn btn--ghost btn--sm rm-file" data-i="${i}" style="padding: 0 4px;">×</button></span>
+            <div class="flex items-center justify-between py-2 border-b text-caption text-muted">
+              <span class="truncate mr-4"><i class="bi bi-file-earmark-text"></i> ${f.name}</span>
+              <span class="flex items-center gap-2">${formatSize(f.size)} <button class="btn btn--ghost rm-file" data-i="${i}" style="padding: 2px 8px;">×</button></span>
             </div>
-          `).join('') + (selectedFiles.length > 0 ? `<div style="font-size: var(--font-size-xs); color: ${tooLarge ? 'var(--color-danger)' : 'var(--color-text-tertiary)'}; margin-top: var(--space-2);">Total: ${formatSize(total)} / 25 MB</div>` : '');
+          `).join('') + (selectedFiles.length > 0 ? `<div class="text-caption mt-2 ${tooLarge ? 'text-danger' : 'text-muted'}">Total: ${formatSize(total)} / 25 MB</div>` : '');
 
           selectedFilesDiv.querySelectorAll('.rm-file').forEach((btn: any) => {
             btn.addEventListener('click', () => { selectedFiles.splice(parseInt(btn.dataset.i), 1); renderSelected(); });
@@ -367,7 +359,6 @@ const { id } = Astro.params;
           }
         });
 
-        // Download work ZIP
         document.getElementById('btn-download-work')!.addEventListener('click', async () => {
           try {
             showToast('Preparing download...', 'info');
@@ -379,48 +370,72 @@ const { id } = Astro.params;
     </script>
 
     <style is:global>
-      .page-header__subtitle { font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
-
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 80px 0;
+      }
+      .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--color-divider);
+        border-top-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+        margin-bottom: var(--space-4);
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
       .preview-panel {
         position: fixed;
-        top: var(--header-height);
+        top: 58px;
         right: 0;
         bottom: 0;
         width: 50%;
         max-width: 700px;
-        background: var(--color-bg-secondary);
-        border-left: 1px solid var(--glass-border);
+        background: var(--color-canvas);
+        border-left: 1px solid var(--color-divider);
         z-index: 60;
         display: flex;
         flex-direction: column;
         animation: slideInRight 300ms ease-out;
+        box-shadow: -5px 0 30px rgba(0,0,0,0.05);
       }
 
       .preview-panel__header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: var(--space-4) var(--space-5);
-        border-bottom: 1px solid var(--glass-border);
-        background: rgba(10, 14, 26, 0.95);
-        backdrop-filter: blur(10px);
+        padding: var(--space-4) var(--space-6);
+        border-bottom: 1px solid var(--color-divider);
+        background: #1d1e23;
         flex-shrink: 0;
       }
 
       .preview-panel__content {
         flex: 1;
+        min-height: 0;
         overflow-y: auto;
         padding: 0;
-        background: var(--color-bg-primary);
+        background: #0d1117; /* Dark background for code preview, matches github-dark */
+      }
+      
+      :root.dark .preview-panel__content {
+        background: #0d1117; /* Same */
       }
 
       .preview-code {
         margin: 0;
         padding: var(--space-6);
         font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-        font-size: var(--font-size-sm);
+        font-size: 14px;
         line-height: 1.7;
-        color: var(--color-text-primary);
+        color: #c9d1d9; /* Base github-dark text color */
         white-space: pre;
         overflow-x: auto;
         tab-size: 4;
@@ -431,32 +446,20 @@ const { id } = Astro.params;
         background: transparent !important;
       }
 
-      /* Highlight.js Line Numbers */
-      .hljs-ln {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      
-      .hljs-ln td {
-        padding: 0;
-      }
-      
+      .hljs-ln { width: 100%; border-collapse: collapse; }
+      .hljs-ln td { padding: 0; }
       .hljs-ln-numbers {
         user-select: none;
         text-align: right;
-        color: var(--color-text-tertiary);
-        border-right: 1px solid var(--glass-border);
+        color: #484f58;
+        border-right: 1px solid #30363d;
         vertical-align: top;
         padding-right: var(--space-4) !important;
         margin-right: var(--space-4) !important;
         min-width: 3.5rem;
       }
-      
-      .hljs-ln-code {
-        padding-left: var(--space-4) !important;
-      }
+      .hljs-ln-code { padding-left: var(--space-4) !important; }
 
-      /* Bottom sheet handle */
       .bottom-sheet-handle {
         width: 100%;
         padding: var(--space-4) 0 var(--space-2) 0;
@@ -473,38 +476,78 @@ const { id } = Astro.params;
       .handle-bar {
         width: 48px;
         height: 5px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: var(--radius-full);
+        background: var(--color-divider);
+        border-radius: var(--radius-pill);
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--color-divider);
+        border-radius: var(--radius-pill);
+        overflow: hidden;
+      }
+      .progress-bar__fill {
+        height: 100%;
+        background: var(--color-primary);
+        border-radius: var(--radius-pill);
+        transition: width 0.3s ease;
+      }
+
+      .btn--sm {
+        font-size: 14px;
+        padding: 6px 14px;
+      }
+
+      .text-danger { color: #ff3b30; }
+      .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .py-2 { padding-top: 8px; padding-bottom: 8px; }
+      .px-6 { padding-left: 24px; padding-right: 24px; }
+      .py-4 { padding-top: 17px; padding-bottom: 17px; }
+      .mr-4 { margin-right: 17px; }
+      .border-b { border-bottom: 1px solid var(--color-divider); }
+      .mb-1 { margin-bottom: 4px; }
+      .mb-2 { margin-bottom: 8px; }
+      .mb-4 { margin-bottom: 17px; }
+      .mb-8 { margin-bottom: 32px; }
+      .mt-1 { margin-top: 4px; }
+      .mt-2 { margin-top: 8px; }
+      .mt-4 { margin-top: 17px; }
+      .mt-6 { margin-top: 24px; }
+      .mt-8 { margin-top: 32px; }
+      .min-w-0 { min-width: 0; }
+      .p-1 { padding: 4px 8px; }
+      .rounded { border-radius: 4px; }
+      
+      @keyframes slideInRight {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
       }
 
       @media (max-width: 768px) {
         .preview-panel {
           width: 100%;
           max-width: none;
-          top: 15vh;
+          top: 114px;
+          height: calc(100dvh - 114px);
+          max-height: none;
           border-left: none;
-          border-top: 1px solid var(--glass-border);
-          border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+          border-top: 1px solid var(--color-divider);
+          border-radius: var(--radius-lg) var(--radius-lg) 0 0;
           animation: slideUp 400ms cubic-bezier(0.16, 1, 0.3, 1);
-          box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
           z-index: 100;
+          overflow: hidden;
         }
-        .page-header {
-          flex-direction: column;
-          align-items: flex-start !important;
-          gap: var(--space-4);
-        }
+        .page-header { flex-direction: column; align-items: flex-start !important; gap: var(--space-4); }
         .preview-panel__header {
-          padding: var(--space-6) var(--space-5) var(--space-4);
-          border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-          background: var(--color-bg-elevated);
-          margin-top: 0;
+          padding: 15px var(--space-4) 13px;
+          border-radius: var(--radius-lg) var(--radius-lg) 0 0;
         }
-        #preview-filename {
-          max-width: 150px;
-        }
+        .bottom-sheet-handle { position: static; flex: 0 0 auto; padding: 8px 0 5px; }
+        .preview-panel__content { min-height: 0; overflow: auto; }
+        .preview-code { padding: 16px; font-size: 13px; line-height: 1.62; }
       }
-
       @keyframes slideUp {
         from { transform: translateY(100%); }
         to { transform: translateY(0); }

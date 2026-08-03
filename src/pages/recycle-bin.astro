@@ -1,42 +1,60 @@
 ---
-import Layout from '../Layouts/Layout.astro'
-import { Show } from '@clerk/astro/components'
+import Layout from "../Layouts/Layout.astro";
+import { Show } from "@clerk/astro/components";
 ---
 
 <Layout title="Recycle Bin">
   <Show when="signed-out">
-    <script>window.location.href = '/';</script>
+    <script>
+      window.location.href = "/";
+    </script>
   </Show>
 
   <Show when="signed-in">
     <div class="container page-content">
-      <div class="page-header">
-        <h1 style="font-size: var(--font-size-2xl);"><i class="bi bi-trash3"></i> Recycle Bin</h1>
-        <p class="page-header__subtitle">Deleted items are kept for 7 days before permanent deletion.</p>
+      <div class="page-header mb-8">
+        <h1 class="text-display-lg">
+          <i class="bi bi-trash3"></i> Recycle Bin
+        </h1>
+        <p class="text-muted mt-2">
+          Deleted items are kept for 7 days before permanent deletion.
+        </p>
       </div>
 
-      <div id="loading" class="empty-state" style="padding: var(--space-8);">
+      <div id="loading" class="empty-state">
         <div class="spinner spinner--lg"></div>
       </div>
 
-      <div id="bin-content" style="display: none; margin-top: var(--space-8);"></div>
+      <div id="bin-content" style="display: none;">
+      </div>
 
       <div id="bin-empty" class="empty-state" style="display: none;">
-        <div class="empty-state__icon"><i class="bi bi-stars"></i></div>
-        <h3 class="empty-state__title">Recycle bin is empty</h3>
-        <p class="empty-state__description">Deleted items will appear here for 7 days.</p>
+        <div class="text-hero text-muted mb-4"><i class="bi bi-stars"></i></div>
+        <h3 class="text-display-lg mb-2">Recycle bin is empty</h3>
+        <p class="text-lead text-muted">
+          Deleted items will appear here for 7 days.
+        </p>
       </div>
     </div>
 
     <script>
-      document.addEventListener('DOMContentLoaded', async () => {
+      document.addEventListener("DOMContentLoaded", async () => {
         const api = (window as any).__labrepo_api;
         const showToast = (window as any).__labrepo_showToast;
 
-        await new Promise<void>((r) => { const c = () => { if ((window as any).Clerk?.session) r(); else setTimeout(c, 100); }; c(); });
+        await new Promise<void>((r) => {
+          const c = () => {
+            if ((window as any).Clerk?.session) r();
+            else setTimeout(c, 100);
+          };
+          c();
+        });
 
         const typeIcons: Record<string, string> = {
-          session: '<i class="bi bi-calendar3"></i>', subject: '<i class="bi bi-book"></i>', work: '<i class="bi bi-flask"></i>', file: '<i class="bi bi-file-earmark-text"></i>'
+          session: '<i class="bi bi-calendar3"></i>',
+          subject: '<i class="bi bi-book"></i>',
+          work: '<i class="bi bi-flask"></i>',
+          file: '<i class="bi bi-file-earmark-text"></i>',
         };
 
         await loadBin();
@@ -44,69 +62,83 @@ import { Show } from '@clerk/astro/components'
         async function loadBin() {
           try {
             const { items } = await api.getRecycleBin();
-            
-            document.getElementById('loading')!.style.display = 'none';
+
+            document.getElementById("loading")!.style.display = "none";
 
             if (items.length === 0) {
-              document.getElementById('bin-empty')!.style.display = 'flex';
-              document.getElementById('bin-content')!.style.display = 'none';
+              document.getElementById("bin-empty")!.style.display = "flex";
+              document.getElementById("bin-content")!.style.display = "none";
             } else {
-              document.getElementById('bin-empty')!.style.display = 'none';
-              document.getElementById('bin-content')!.style.display = 'block';
+              document.getElementById("bin-empty")!.style.display = "none";
+              document.getElementById("bin-content")!.style.display = "block";
               renderItems(items);
             }
           } catch (e: any) {
-            showToast('Failed to load recycle bin', 'error');
-            document.getElementById('loading')!.style.display = 'none';
+            showToast("Failed to load recycle bin", "error");
+            document.getElementById("loading")!.style.display = "none";
           }
         }
 
-
         function renderItems(items: any[]) {
-          const content = document.getElementById('bin-content')!;
-          content.innerHTML = items.map((item: any, i: number) => {
-            const daysClass = item.remaining_days <= 1 ? 'badge--danger' : item.remaining_days <= 3 ? 'badge--warning' : 'badge--info';
-            return `
-              <div class="glass-card animate-fade-in-up stagger-${Math.min(i + 1, 5)}" style="padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <span style="font-size: 1.2rem;">${typeIcons[item.item_type] || '<i class="bi bi-file-earmark-text"></i>'}</span>
+          const content = document.getElementById("bin-content")!;
+          content.innerHTML = items
+            .map((item: any) => {
+              const daysColor =
+                item.remaining_days <= 1
+                  ? "#ff3b30"
+                  : item.remaining_days <= 3
+                    ? "#ff9500"
+                    : "#34c759";
+              return `
+              <div class="store-utility-card animate-fade-in mb-4" style="padding: var(--space-4) var(--space-6);">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                  <div class="flex items-center gap-4">
+                    <span class="text-display-lg text-muted">${typeIcons[item.item_type] || '<i class="bi bi-file-earmark-text"></i>'}</span>
                     <div>
-                      <div style="font-weight: 500; font-size: var(--font-size-sm);">${item.name}</div>
-                      <div class="flex gap-3 items-center" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-top: 2px;">
-                        <span class="badge ${daysClass}" style="font-size: 10px;">${item.remaining_days}d left</span>
+                      <div class="text-body-strong mb-1">${item.name}</div>
+                      <div class="flex gap-4 items-center text-caption text-muted">
+                        <span class="btn--dark-utility p-1 rounded" style="background-color: ${daysColor}22; color: ${daysColor};">${item.remaining_days}d left</span>
                         <span>${item.item_type}</span>
                         <span>Deleted ${new Date(item.deleted_at).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </div>
-                  <div class="flex gap-2">
-                    <button class="btn btn--secondary btn--sm btn-restore" data-id="${item.id}"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
-                    <button class="btn btn--danger btn--sm btn-perma-delete" data-id="${item.id}" data-name="${item.name}">Delete Forever</button>
+                  <div class="flex gap-4">
+                    <button class="btn btn--secondary-pill btn-restore" data-id="${item.id}">Restore</button>
+                    <button class="btn btn--secondary-pill btn-perma-delete" style="color: #ff3b30; border-color: #ff3b30;" data-id="${item.id}" data-name="${item.name}">Delete Forever</button>
                   </div>
                 </div>
               </div>
             `;
-          }).join('');
+            })
+            .join("");
 
-          content.querySelectorAll('.btn-restore').forEach((btn: any) => {
-            btn.addEventListener('click', async () => {
+          content.querySelectorAll(".btn-restore").forEach((btn: any) => {
+            btn.addEventListener("click", async () => {
               try {
                 await api.restoreItem(parseInt(btn.dataset.id));
-                showToast('Item restored!', 'success');
+                showToast("Item restored!", "success");
                 await loadBin();
-              } catch (err: any) { showToast(err.message, 'error'); }
+              } catch (err: any) {
+                showToast(err.message, "error");
+              }
             });
           });
 
-          content.querySelectorAll('.btn-perma-delete').forEach((btn: any) => {
-            btn.addEventListener('click', async () => {
-              if (confirm(`Permanently delete "${btn.dataset.name}"? This cannot be undone.`)) {
+          content.querySelectorAll(".btn-perma-delete").forEach((btn: any) => {
+            btn.addEventListener("click", async () => {
+              if (
+                confirm(
+                  `Permanently delete "${btn.dataset.name}"? This cannot be undone.`,
+                )
+              ) {
                 try {
                   await api.permanentDelete(parseInt(btn.dataset.id));
-                  showToast('Permanently deleted', 'success');
+                  showToast("Permanently deleted", "success");
                   await loadBin();
-                } catch (err: any) { showToast(err.message, 'error'); }
+                } catch (err: any) {
+                  showToast(err.message, "error");
+                }
               }
             });
           });
@@ -115,10 +147,34 @@ import { Show } from '@clerk/astro/components'
     </script>
 
     <style>
-      .page-header__subtitle { font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: var(--space-1); }
-      @media (max-width: 768px) {
-        .flex { flex-wrap: wrap; }
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 80px 0;
       }
+      .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--color-divider);
+        border-top-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+        margin-bottom: var(--space-4);
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .p-1 { padding: 4px 8px; }
+      .rounded { border-radius: 4px; }
+      .mb-1 { margin-bottom: 4px; }
+      .mb-2 { margin-bottom: 8px; }
+      .mb-4 { margin-bottom: 17px; }
+      .mb-8 { margin-bottom: 32px; }
+      .mt-2 { margin-top: 8px; }
+      .flex-wrap { flex-wrap: wrap; }
     </style>
   </Show>
 </Layout>

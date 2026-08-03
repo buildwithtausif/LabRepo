@@ -9,13 +9,13 @@ import { Show } from '@clerk/astro/components'
   </Show>
 
   <Show when="signed-in">
-    <div class="onboarding" id="onboarding">
+    <div class="onboarding bg-canvas" id="onboarding">
       <!-- Progress bar -->
-      <div class="onboarding__progress">
+      <div class="onboarding__progress bg-canvas">
         <div class="onboarding__progress-bar">
           <div class="onboarding__progress-fill" id="progress-fill" style="width: 16.66%"></div>
         </div>
-        <span class="onboarding__step-label" id="step-label">Step 1 of 6</span>
+        <span class="text-caption text-muted" id="step-label">Step 1 of 6</span>
       </div>
 
       <!-- Steps container -->
@@ -24,41 +24,41 @@ import { Show } from '@clerk/astro/components'
         <!-- Step 1: Welcome -->
         <div class="onboarding__step active" data-step="1">
           <div class="onboarding__step-content">
-            <div class="welcome-icon animate-fade-in-scale"><i class="bi bi-hexagon-fill"></i></div>
-            <h1 class="animate-fade-in-up">Welcome to LabRepo</h1>
-            <p class="animate-fade-in-up stagger-1">
+            <div class="welcome-icon text-primary animate-fade-in"><i class="bi bi-hexagon-fill"></i></div>
+            <h1 class="text-display-lg mb-4 animate-fade-in">Welcome to LabRepo</h1>
+            <p class="text-lead text-muted mb-12 animate-fade-in">
               A safe, organized home for all your college lab work.
               Never lose a file again.
             </p>
 
-            <div class="hierarchy-diagram animate-fade-in-up stagger-2">
-              <div class="h-level h-level--1">
-                <span class="h-level__icon"><i class="bi bi-calendar3"></i></span>
-                <span class="h-level__text">Academic Session</span>
+            <div class="hierarchy-diagram animate-fade-in">
+              <div class="h-level">
+                <span class="text-display-lg text-muted"><i class="bi bi-calendar3"></i></span>
+                <span class="text-body-strong">Academic Session</span>
                 <span class="h-level__example">e.g., 2026–2027</span>
               </div>
               <div class="h-connector"></div>
-              <div class="h-level h-level--2">
-                <span class="h-level__icon"><i class="bi bi-book"></i></span>
-                <span class="h-level__text">Subject</span>
+              <div class="h-level">
+                <span class="text-display-lg text-muted"><i class="bi bi-book"></i></span>
+                <span class="text-body-strong">Subject</span>
                 <span class="h-level__example">e.g., Machine Learning</span>
               </div>
               <div class="h-connector"></div>
-              <div class="h-level h-level--3">
-                <span class="h-level__icon"><i class="bi bi-flask"></i></span>
-                <span class="h-level__text">Work</span>
+              <div class="h-level">
+                <span class="text-display-lg text-muted"><i class="bi bi-flask"></i></span>
+                <span class="text-body-strong">Work</span>
                 <span class="h-level__example">e.g., Experiment 5</span>
               </div>
               <div class="h-connector"></div>
-              <div class="h-level h-level--4">
-                <span class="h-level__icon"><i class="bi bi-file-earmark-text"></i></span>
-                <span class="h-level__text">Files</span>
+              <div class="h-level">
+                <span class="text-display-lg text-muted"><i class="bi bi-file-earmark-text"></i></span>
+                <span class="text-body-strong">Files</span>
                 <span class="h-level__example">train.py, data.csv</span>
               </div>
             </div>
 
-            <div class="onboarding__actions animate-fade-in-up stagger-3">
-              <button class="btn btn--primary btn--lg" id="btn-start">Let's Get Started</button>
+            <div class="flex justify-center gap-4 mt-12 animate-fade-in">
+              <button class="btn btn--primary" id="btn-start">Let's Get Started</button>
               <button class="btn btn--ghost btn-skip" data-skip="2">Skip</button>
             </div>
           </div>
@@ -67,35 +67,35 @@ import { Show } from '@clerk/astro/components'
         <!-- Step 2: Create First Session -->
         <div class="onboarding__step" data-step="2">
           <div class="onboarding__step-content">
-            <div class="step-icon"><i class="bi bi-calendar3"></i></div>
-            <h2>Create Your First Academic Session</h2>
-            <p>
+            <div class="step-icon text-muted"><i class="bi bi-calendar3"></i></div>
+            <h2 class="text-display-lg mb-4">Create Your First Academic Session</h2>
+            <p class="text-lead text-muted mb-8">
               An academic session groups all your work for a school year.
               You can always add more later.
             </p>
 
-            <div class="onboarding__form">
+            <div class="text-left mt-8">
               <input 
                 type="text" 
-                class="input input--lg" 
+                class="input" 
                 id="session-input" 
                 placeholder="e.g., 2026–2027"
                 autocomplete="off"
               />
-              <p class="form-hint">Tip: Use the academic year format like "2026–2027"</p>
+              <p class="text-caption text-muted mt-2">Tip: Use the academic year format like "2026–2027"</p>
 
-              <label class="flex items-center gap-3" style="margin-top: var(--space-4); cursor: pointer; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                <input type="checkbox" id="onboard-auto-delete" style="accent-color: var(--color-accent);" />
+              <label class="flex items-center gap-2 mt-6 cursor-pointer text-caption text-muted">
+                <input type="checkbox" id="onboard-auto-delete" />
                 Auto-delete after session ends
               </label>
-              <div id="onboard-delete-date-wrap" style="display: none; margin-top: var(--space-3);">
+              <div id="onboard-delete-date-wrap" class="mt-4" style="display: none;">
                 <input type="date" class="input" id="onboard-delete-date" />
               </div>
             </div>
 
-            <div class="onboarding__actions">
-              <button class="btn btn--secondary" id="btn-back-1">← Back</button>
-              <button class="btn btn--primary btn--lg" id="btn-create-session">Create Session →</button>
+            <div class="flex justify-center gap-4 mt-12">
+              <button class="btn btn--secondary-pill" id="btn-back-1">Back</button>
+              <button class="btn btn--primary" id="btn-create-session">Create Session</button>
               <button class="btn btn--ghost btn-skip" data-skip="3">Skip</button>
             </div>
           </div>
@@ -104,45 +104,46 @@ import { Show } from '@clerk/astro/components'
         <!-- Step 3: Add Subjects -->
         <div class="onboarding__step" data-step="3">
           <div class="onboarding__step-content">
-            <div class="step-icon"><i class="bi bi-book"></i></div>
-            <h2>Add Your Subjects</h2>
-            <p>
+            <div class="step-icon text-muted"><i class="bi bi-book"></i></div>
+            <h2 class="text-display-lg mb-4">Add Your Subjects</h2>
+            <p class="text-lead text-muted mb-8">
               Add the subjects you're taking this session. 
               Type a name and press Enter to add.
             </p>
 
-            <div class="onboarding__form">
-              <div class="subject-input-row">
+            <div class="text-left mt-8">
+              <div class="flex gap-4">
                 <input 
                   type="text" 
                   class="input" 
+                  style="flex: 1;"
                   id="subject-input" 
                   placeholder="e.g., Machine Learning"
                   autocomplete="off"
                 />
-                <button class="btn btn--primary" id="btn-add-subject">Add</button>
+                <button class="btn btn--secondary-pill" id="btn-add-subject">Add</button>
               </div>
 
-              <div class="subjects-list" id="subjects-list"></div>
+              <div class="flex flex-wrap gap-2 mt-4 min-h-[32px]" id="subjects-list"></div>
 
-              <div class="subject-suggestions">
-                <p style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-bottom: var(--space-2);">
+              <div class="mt-8">
+                <p class="text-caption text-muted mb-2">
                   Quick add common subjects:
                 </p>
-                <div class="flex gap-2" style="flex-wrap: wrap;">
-                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Data Structures">Data Structures</button>
-                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Machine Learning">Machine Learning</button>
-                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Database Systems">Database Systems</button>
-                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Operating Systems">Operating Systems</button>
-                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Computer Networks">Computer Networks</button>
-                  <button class="btn btn--secondary btn--sm btn-suggest" data-name="Web Development">Web Development</button>
+                <div class="flex flex-wrap gap-2">
+                  <button class="btn btn--ghost btn-suggest" data-name="Data Structures">Data Structures</button>
+                  <button class="btn btn--ghost btn-suggest" data-name="Machine Learning">Machine Learning</button>
+                  <button class="btn btn--ghost btn-suggest" data-name="Database Systems">Database Systems</button>
+                  <button class="btn btn--ghost btn-suggest" data-name="Operating Systems">Operating Systems</button>
+                  <button class="btn btn--ghost btn-suggest" data-name="Computer Networks">Computer Networks</button>
+                  <button class="btn btn--ghost btn-suggest" data-name="Web Development">Web Development</button>
                 </div>
               </div>
             </div>
 
-            <div class="onboarding__actions">
-              <button class="btn btn--secondary" id="btn-back-2">← Back</button>
-              <button class="btn btn--primary btn--lg" id="btn-save-subjects">Continue →</button>
+            <div class="flex justify-center gap-4 mt-12">
+              <button class="btn btn--secondary-pill" id="btn-back-2">Back</button>
+              <button class="btn btn--primary" id="btn-save-subjects">Continue</button>
               <button class="btn btn--ghost btn-skip" data-skip="4">Skip</button>
             </div>
           </div>
@@ -151,51 +152,51 @@ import { Show } from '@clerk/astro/components'
         <!-- Step 4: Upload Explainer -->
         <div class="onboarding__step" data-step="4">
           <div class="onboarding__step-content">
-            <div class="step-icon"><i class="bi bi-cloud-arrow-up"></i></div>
-            <h2>How Uploads Work</h2>
-            <p>Uploading your lab work is simple. Here's how:</p>
+            <div class="step-icon text-muted"><i class="bi bi-cloud-arrow-up"></i></div>
+            <h2 class="text-display-lg mb-4">How Uploads Work</h2>
+            <p class="text-lead text-muted mb-8">Uploading your lab work is simple. Here's how:</p>
 
-            <div class="upload-explainer">
-              <div class="upload-step">
+            <div class="flex flex-col gap-4 text-left mb-8">
+              <div class="store-utility-card flex items-start gap-4">
                 <span class="upload-step__num">1</span>
                 <div>
-                  <strong>Select a subject</strong>
-                  <p>Choose which subject this work belongs to.</p>
+                  <strong class="text-body-strong block mb-1">Select a subject</strong>
+                  <p class="text-caption text-muted">Choose which subject this work belongs to.</p>
                 </div>
               </div>
-              <div class="upload-step">
+              <div class="store-utility-card flex items-start gap-4">
                 <span class="upload-step__num">2</span>
                 <div>
-                  <strong>Name your work</strong>
-                  <p>Give it a title like "Experiment 5" or leave it as today's date.</p>
+                  <strong class="text-body-strong block mb-1">Name your work</strong>
+                  <p class="text-caption text-muted">Give it a title like "Experiment 5" or leave it as today's date.</p>
                 </div>
               </div>
-              <div class="upload-step">
+              <div class="store-utility-card flex items-start gap-4">
                 <span class="upload-step__num">3</span>
                 <div>
-                  <strong>Drop your files</strong>
-                  <p>Drag & drop or select multiple files. Up to 25 MB per upload.</p>
+                  <strong class="text-body-strong block mb-1">Drop your files</strong>
+                  <p class="text-caption text-muted">Drag & drop or select multiple files. Up to 25 MB per upload.</p>
                 </div>
               </div>
-              <div class="upload-step">
+              <div class="store-utility-card flex items-start gap-4">
                 <span class="upload-step__num">4</span>
                 <div>
-                  <strong>Done!</strong>
-                  <p>Your files are safely stored and organized.</p>
+                  <strong class="text-body-strong block mb-1">Done!</strong>
+                  <p class="text-caption text-muted">Your files are safely stored and organized.</p>
                 </div>
               </div>
             </div>
 
-            <div class="supported-formats glass-card glass-card--no-hover">
-              <h4 style="margin-bottom: var(--space-2);">Supported file types</h4>
-              <p style="font-size: var(--font-size-xs);">
+            <div class="store-utility-card text-left">
+              <h4 class="text-body-strong mb-2">Supported file types</h4>
+              <p class="text-caption text-muted">
                 .py .ipynb .js .ts .c .cpp .java .go .rs .sql .html .css .json .md .csv .pdf .docx .xlsx .env and many more
               </p>
             </div>
 
-            <div class="onboarding__actions">
-              <button class="btn btn--secondary" id="btn-back-3">← Back</button>
-              <button class="btn btn--primary btn--lg" id="btn-continue-4">Continue →</button>
+            <div class="flex justify-center gap-4 mt-12">
+              <button class="btn btn--secondary-pill" id="btn-back-3">Back</button>
+              <button class="btn btn--primary" id="btn-continue-4">Continue</button>
               <button class="btn btn--ghost btn-skip" data-skip="5">Skip</button>
             </div>
           </div>
@@ -204,36 +205,36 @@ import { Show } from '@clerk/astro/components'
         <!-- Step 5: Data Safety -->
         <div class="onboarding__step" data-step="5">
           <div class="onboarding__step-content">
-            <div class="step-icon"><i class="bi bi-shield-check"></i></div>
-            <h2>Your Data is Safe</h2>
-            <p>LabRepo protects your work with multiple safety nets.</p>
+            <div class="step-icon text-muted"><i class="bi bi-shield-check"></i></div>
+            <h2 class="text-display-lg mb-4">Your Data is Safe</h2>
+            <p class="text-lead text-muted mb-8">LabRepo protects your work with multiple safety nets.</p>
 
-            <div class="safety-features grid grid-cols-2 gap-4">
-              <div class="glass-card glass-card--no-hover">
-                <div style="font-size: 1.5rem; margin-bottom: var(--space-2);"><i class="bi bi-trash3"></i></div>
-                <h4>Recycle Bin</h4>
-                <p style="font-size: var(--font-size-xs);">Deleted files go to the recycle bin. Recover them within 7 days.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-8">
+              <div class="store-utility-card">
+                <div class="text-display-lg text-muted mb-2"><i class="bi bi-trash3"></i></div>
+                <h4 class="text-body-strong mb-2">Recycle Bin</h4>
+                <p class="text-caption text-muted">Deleted files go to the recycle bin. Recover them within 7 days.</p>
               </div>
-              <div class="glass-card glass-card--no-hover">
-                <div style="font-size: 1.5rem; margin-bottom: var(--space-2);"><i class="bi bi-download"></i></div>
-                <h4>Bulk Downloads</h4>
-                <p style="font-size: var(--font-size-xs);">Download an entire subject or session as a ZIP archive anytime.</p>
+              <div class="store-utility-card">
+                <div class="text-display-lg text-muted mb-2"><i class="bi bi-download"></i></div>
+                <h4 class="text-body-strong mb-2">Bulk Downloads</h4>
+                <p class="text-caption text-muted">Download an entire subject or session as a ZIP archive anytime.</p>
               </div>
-              <div class="glass-card glass-card--no-hover">
-                <div style="font-size: 1.5rem; margin-bottom: var(--space-2);"><i class="bi bi-calendar3"></i></div>
-                <h4>Auto-Delete</h4>
-                <p style="font-size: var(--font-size-xs);">Optionally auto-delete old sessions after the academic year ends.</p>
+              <div class="store-utility-card">
+                <div class="text-display-lg text-muted mb-2"><i class="bi bi-calendar3"></i></div>
+                <h4 class="text-body-strong mb-2">Auto-Delete</h4>
+                <p class="text-caption text-muted">Optionally auto-delete old sessions after the academic year ends.</p>
               </div>
-              <div class="glass-card glass-card--no-hover">
-                <div style="font-size: 1.5rem; margin-bottom: var(--space-2);"><i class="bi bi-lock"></i></div>
-                <h4>Private & Secure</h4>
-                <p style="font-size: var(--font-size-xs);">Only you can access your files. Authentication via Clerk.</p>
+              <div class="store-utility-card">
+                <div class="text-display-lg text-muted mb-2"><i class="bi bi-lock"></i></div>
+                <h4 class="text-body-strong mb-2">Private & Secure</h4>
+                <p class="text-caption text-muted">Only you can access your files. Authentication via Clerk.</p>
               </div>
             </div>
 
-            <div class="onboarding__actions">
-              <button class="btn btn--secondary" id="btn-back-4">← Back</button>
-              <button class="btn btn--primary btn--lg" id="btn-continue-5">Almost Done →</button>
+            <div class="flex justify-center gap-4 mt-12">
+              <button class="btn btn--secondary-pill" id="btn-back-4">Back</button>
+              <button class="btn btn--primary" id="btn-continue-5">Almost Done</button>
               <button class="btn btn--ghost btn-skip" data-skip="6">Skip</button>
             </div>
           </div>
@@ -242,22 +243,22 @@ import { Show } from '@clerk/astro/components'
         <!-- Step 6: Finish -->
         <div class="onboarding__step" data-step="6">
           <div class="onboarding__step-content">
-            <div class="step-icon" style="font-size: 3rem;"><i class="bi bi-emoji-smile"></i></div>
-            <h2>You're All Set!</h2>
-            <p>
+            <div class="step-icon text-primary mb-4" style="font-size: 48px;"><i class="bi bi-emoji-smile"></i></div>
+            <h2 class="text-display-lg mb-4">You're All Set!</h2>
+            <p class="text-lead text-muted mb-8">
               Your workspace is ready. Start by uploading your first lab work.
             </p>
 
-            <div id="setup-summary" class="glass-card glass-card--no-hover" style="text-align: left; margin-top: var(--space-6);">
-              <h4 style="margin-bottom: var(--space-3);">Your Setup</h4>
+            <div id="setup-summary" class="store-utility-card text-left mt-8">
+              <h4 class="text-body-strong mb-4">Your Setup</h4>
               <div id="summary-content">
-                <p style="font-size: var(--font-size-sm); color: var(--color-text-tertiary);">Loading...</p>
+                <p class="text-caption text-muted">Loading...</p>
               </div>
             </div>
 
-            <div class="onboarding__actions">
-              <button class="btn btn--primary btn--lg" id="btn-finish">
-                Go to Dashboard →
+            <div class="flex justify-center gap-4 mt-12">
+              <button class="btn btn--primary" id="btn-finish">
+                Go to Dashboard
               </button>
             </div>
           </div>
@@ -298,11 +299,9 @@ import { Show } from '@clerk/astro/components'
         function goToStep(step: number) {
           currentStep = step;
           
-          // Update progress
           progressFill.style.width = `${(step / 6) * 100}%`;
           stepLabel.textContent = `Step ${step} of 6`;
 
-          // Show/hide steps
           document.querySelectorAll('.onboarding__step').forEach((el) => {
             const stepNum = parseInt((el as HTMLElement).dataset.step || '0');
             el.classList.toggle('active', stepNum === step);
@@ -376,7 +375,7 @@ import { Show } from '@clerk/astro/components'
 
         function renderSubjects() {
           subjectsList.innerHTML = subjects.map((name, i) => `
-            <div class="subject-chip animate-fade-in-scale">
+            <div class="subject-chip">
               <span>${name}</span>
               <button class="subject-chip__remove" data-index="${i}">×</button>
             </div>
@@ -409,7 +408,6 @@ import { Show } from '@clerk/astro/components'
           if (e.key === 'Enter') addSubject(subjectInput.value);
         });
 
-        // Quick-add suggestions
         document.querySelectorAll('.btn-suggest').forEach((btn) => {
           btn.addEventListener('click', () => {
             addSubject((btn as HTMLElement).dataset.name || '');
@@ -440,7 +438,7 @@ import { Show } from '@clerk/astro/components'
             html += `<div class="summary-item"><i class="bi bi-book"></i> Subjects: <strong>${subjects.join(', ')}</strong></div>`;
           }
           if (!html) {
-            html = '<p style="font-size: var(--font-size-sm); color: var(--color-text-tertiary);">No setup steps completed — you can configure everything from the dashboard.</p>';
+            html = '<p class="text-caption text-muted">No setup steps completed — you can configure everything from the dashboard.</p>';
           }
 
           content.innerHTML = html;
@@ -452,7 +450,6 @@ import { Show } from '@clerk/astro/components'
             window.location.href = '/dashboard';
           } catch (err: any) {
             showToast('Failed to complete onboarding', 'error');
-            // Go anyway
             window.location.href = '/dashboard';
           }
         });
@@ -470,34 +467,26 @@ import { Show } from '@clerk/astro/components'
         position: sticky;
         top: 0;
         z-index: 10;
-        background: rgba(10, 14, 26, 0.9);
-        backdrop-filter: blur(20px);
         padding: var(--space-4) var(--space-6);
         display: flex;
         align-items: center;
         gap: var(--space-4);
-        border-bottom: 1px solid var(--glass-border);
+        border-bottom: 1px solid var(--color-divider);
       }
 
       .onboarding__progress-bar {
         flex: 1;
         height: 4px;
-        background: var(--glass-bg);
-        border-radius: var(--radius-full);
+        background: var(--color-divider);
+        border-radius: var(--radius-pill);
         overflow: hidden;
       }
 
       .onboarding__progress-fill {
         height: 100%;
-        background: var(--gradient-primary);
-        border-radius: var(--radius-full);
+        background: var(--color-primary);
+        border-radius: var(--radius-pill);
         transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
-      }
-
-      .onboarding__step-label {
-        font-size: var(--font-size-xs);
-        color: var(--color-text-tertiary);
-        white-space: nowrap;
       }
 
       .onboarding__steps {
@@ -510,12 +499,11 @@ import { Show } from '@clerk/astro/components'
         justify-content: center;
         align-items: center;
         min-height: calc(100vh - 60px);
-        padding: var(--space-8) var(--space-6);
+        padding: var(--space-12) var(--space-6);
       }
 
       .onboarding__step.active {
         display: flex;
-        animation: fadeInUp 400ms ease-out;
       }
 
       .onboarding__step-content {
@@ -524,47 +512,14 @@ import { Show } from '@clerk/astro/components'
         text-align: center;
       }
 
-      .onboarding__step-content h1,
-      .onboarding__step-content h2 {
-        margin-bottom: var(--space-3);
-      }
-
-      .onboarding__step-content > p {
-        margin-bottom: var(--space-8);
-        font-size: var(--font-size-md);
-      }
-
       .welcome-icon {
-        font-size: 4rem;
-        background: var(--gradient-primary);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        font-size: 42px;
         margin-bottom: var(--space-4);
       }
 
       .step-icon {
-        font-size: 2.5rem;
+        font-size: 32px;
         margin-bottom: var(--space-4);
-      }
-
-      .onboarding__actions {
-        display: flex;
-        justify-content: center;
-        gap: var(--space-3);
-        margin-top: var(--space-8);
-        flex-wrap: wrap;
-      }
-
-      .onboarding__form {
-        text-align: left;
-        margin-top: var(--space-6);
-      }
-
-      .form-hint {
-        font-size: var(--font-size-xs);
-        color: var(--color-text-tertiary);
-        margin-top: var(--space-2);
       }
 
       /* Hierarchy diagram */
@@ -580,100 +535,46 @@ import { Show } from '@clerk/astro/components'
         display: flex;
         align-items: center;
         gap: var(--space-3);
-        padding: var(--space-3) var(--space-5);
-        background: var(--glass-bg);
-        border: 1px solid var(--glass-border);
-        border-radius: var(--radius-md);
+        padding: var(--space-4) var(--space-6);
+        background: var(--color-canvas);
+        border: 1px solid var(--color-divider);
+        border-radius: var(--radius-lg);
         min-width: 320px;
-        transition: all var(--transition-base);
+        text-align: left;
       }
 
-      .h-level:hover {
-        background: var(--glass-bg-hover);
-        transform: translateX(4px);
-      }
-
-      .h-level__icon { font-size: var(--font-size-lg); }
-      .h-level__text { font-weight: 500; font-size: var(--font-size-sm); }
-      .h-level__example { 
-        margin-left: auto; 
-        font-size: var(--font-size-xs); 
-        color: var(--color-text-tertiary);
-        font-style: italic;
+      .h-level__example {
+        margin-left: auto;
+        font-size: 14px;
+        color: var(--color-ink-muted);
       }
 
       .h-connector {
         width: 2px;
-        height: 12px;
-        background: var(--glass-border);
-        margin-left: var(--space-8);
-      }
-
-      /* Subject input */
-      .subject-input-row {
-        display: flex;
-        gap: var(--space-3);
-      }
-
-      .subject-input-row .input { flex: 1; }
-
-      .subjects-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-2);
-        margin-top: var(--space-4);
-        min-height: var(--space-8);
+        height: 16px;
+        background: var(--color-divider);
+        margin-left: 32px;
       }
 
       .subject-chip {
         display: inline-flex;
         align-items: center;
         gap: var(--space-2);
-        padding: var(--space-2) var(--space-4);
-        background: var(--color-accent-subtle);
-        border: 1px solid rgba(99, 102, 241, 0.2);
-        border-radius: var(--radius-full);
-        font-size: var(--font-size-sm);
-        color: var(--color-accent-hover);
+        padding: 6px 12px;
+        background: var(--color-canvas);
+        border: 1px solid var(--color-divider);
+        border-radius: var(--radius-pill);
+        font-size: 14px;
       }
 
       .subject-chip__remove {
         background: none;
         border: none;
-        color: var(--color-accent-hover);
+        color: var(--color-ink-muted);
         cursor: pointer;
-        font-size: var(--font-size-lg);
+        font-size: 16px;
         line-height: 1;
         padding: 0;
-        opacity: 0.6;
-        transition: opacity var(--transition-fast);
-      }
-
-      .subject-chip__remove:hover {
-        opacity: 1;
-      }
-
-      .subject-suggestions {
-        margin-top: var(--space-6);
-      }
-
-      /* Upload explainer */
-      .upload-explainer {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-4);
-        text-align: left;
-        margin-bottom: var(--space-6);
-      }
-
-      .upload-step {
-        display: flex;
-        align-items: flex-start;
-        gap: var(--space-4);
-        padding: var(--space-4);
-        background: var(--glass-bg);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--glass-border);
       }
 
       .upload-step__num {
@@ -683,59 +584,40 @@ import { Show } from '@clerk/astro/components'
         width: 28px;
         height: 28px;
         min-width: 28px;
-        background: var(--gradient-primary);
-        border-radius: var(--radius-full);
-        font-size: var(--font-size-sm);
+        background: var(--color-primary);
+        border-radius: var(--radius-pill);
+        font-size: 14px;
         font-weight: 600;
-        color: white;
+        color: #ffffff;
       }
 
-      .upload-step strong {
-        display: block;
-        margin-bottom: 2px;
-        font-size: var(--font-size-sm);
-      }
-
-      .upload-step p {
-        font-size: var(--font-size-xs);
-        margin: 0;
-      }
-
-      .supported-formats {
-        text-align: left;
-      }
-
-      /* Safety features */
-      .safety-features {
-        text-align: left;
-        margin-bottom: var(--space-4);
-      }
-
-      .safety-features h4 {
-        font-size: var(--font-size-sm);
-        margin-bottom: var(--space-1);
-      }
-
-      /* Summary */
       .summary-item {
         padding: var(--space-2) 0;
-        font-size: var(--font-size-sm);
-        color: var(--color-text-secondary);
-        border-bottom: 1px solid var(--glass-border);
+        font-size: 14px;
+        border-bottom: 1px solid var(--color-divider);
       }
-
       .summary-item:last-child {
         border-bottom: none;
       }
+
+      .mb-1 { margin-bottom: 4px; }
+      .mb-2 { margin-bottom: 8px; }
+      .mb-4 { margin-bottom: 17px; }
+      .mb-6 { margin-bottom: 24px; }
+      .mb-8 { margin-bottom: 32px; }
+      .mb-12 { margin-bottom: 48px; }
+      .mt-2 { margin-top: 8px; }
+      .mt-4 { margin-top: 17px; }
+      .mt-6 { margin-top: 24px; }
+      .mt-8 { margin-top: 32px; }
+      .mt-12 { margin-top: 48px; }
+      .cursor-pointer { cursor: pointer; }
+      .block { display: block; }
 
       @media (max-width: 768px) {
         .h-level {
           min-width: auto;
           width: 100%;
-        }
-
-        .safety-features {
-          grid-template-columns: 1fr !important;
         }
       }
     </style>

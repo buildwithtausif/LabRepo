@@ -1,0 +1,33 @@
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy the rest of the application
+COPY . .
+
+# Build the Astro project
+RUN npm run build
+
+# Runtime stage
+FROM node:22-alpine AS runtime
+
+WORKDIR /app
+
+# Copy built assets and dependencies from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
+
+# Environment variables
+# Vercel and similar serverless/edge environments typically provide their own PORT dynamically.
+# We set HOST to 0.0.0.0 so the server listens on all network interfaces.
+ENV HOST=0.0.0.0
+
+# Start the server (Astro's standalone Node server automatically listens on process.env.PORT)
+CMD ["node", "./dist/server/entry.mjs"]

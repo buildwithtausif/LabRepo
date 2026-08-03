@@ -7,7 +7,7 @@ const currentPath = Astro.url.pathname
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -28,21 +28,22 @@ const currentPath = Astro.url.pathname
         <div class="app-header__inner">
           <div class="app-header__left">
             <a href="/dashboard" class="app-header__logo">
-              <span class="app-header__logo-icon"><i class="bi bi-hexagon-fill"></i></span>
+              <span class="app-header__logo-icon"><i class="bi bi-bezier2"></i></span>
               <span class="app-header__logo-text">LabRepo</span>
+              <span class="app-header__logo-tag hide-mobile">student workspace</span>
             </a>
           </div>
           
           <Show when="signed-in">
             <nav class="app-header__nav hide-mobile">
               <a href="/dashboard" class:list={["app-header__link", { active: currentPath === '/dashboard' }]}>
-                <span><i class="bi bi-grid-1x2"></i></span> Dashboard
+                <i class="bi bi-grid-1x2"></i> Dashboard
               </a>
               <a href="/search" class:list={["app-header__link", { active: currentPath === '/search' }]}>
-                <span><i class="bi bi-search"></i></span> Search
+                <i class="bi bi-search"></i> Search
               </a>
               <a href="/recycle-bin" class:list={["app-header__link", { active: currentPath === '/recycle-bin' }]}>
-                <span><i class="bi bi-trash3"></i></span> Recycle Bin
+                <i class="bi bi-trash3"></i> Recycle Bin
               </a>
             </nav>
           </Show>
@@ -50,7 +51,7 @@ const currentPath = Astro.url.pathname
           <div class="app-header__right">
             <Show when="signed-out">
               <SignInButton mode="modal" asChild={true}>
-                <button class="btn btn--ghost">Sign In</button>
+                <button class="btn btn--dark-utility">Sign In</button>
               </SignInButton>
               <SignUpButton mode="modal" asChild={true}>
                 <button class="btn btn--primary">Get Started</button>
@@ -66,16 +67,13 @@ const currentPath = Astro.url.pathname
         <Show when="signed-in">
           <nav class="app-header__mobile-nav hide-desktop">
             <a href="/dashboard" class:list={["app-header__mobile-link", { active: currentPath === '/dashboard' }]}>
-              <span><i class="bi bi-grid-1x2"></i></span>
-              <span>Home</span>
+              <span><i class="bi bi-grid-1x2"></i></span><small>Home</small>
             </a>
             <a href="/search" class:list={["app-header__mobile-link", { active: currentPath === '/search' }]}>
-              <span><i class="bi bi-search"></i></span>
-              <span>Search</span>
+              <span><i class="bi bi-search"></i></span><small>Search</small>
             </a>
             <a href="/recycle-bin" class:list={["app-header__mobile-link", { active: currentPath === '/recycle-bin' }]}>
-              <span><i class="bi bi-trash3"></i></span>
-              <span>Bin</span>
+              <span><i class="bi bi-trash3"></i></span><small>Bin</small>
             </a>
           </nav>
         </Show>
@@ -86,6 +84,24 @@ const currentPath = Astro.url.pathname
       <slot />
     </main>
 
+    <!-- Footer for landing page -->
+    {currentPath === '/' && (
+      <footer class="app-footer">
+        <div class="container text-center flex flex-col items-center gap-2">
+          <p class="text-caption text-muted">&copy; 2026 LabRepo. All rights reserved.</p>
+          <div class="flex gap-4 text-caption text-muted mt-2">
+            <a href="https://github.com/buildwithtausif" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">
+              Developed by epsilon.void
+            </a>
+            <span>&bull;</span>
+            <a href="mailto:contact@labrepo.com" class="hover:text-white transition-colors">
+              Contact Us
+            </a>
+          </div>
+        </div>
+      </footer>
+    )}
+
     <script src="../scripts/api.ts"></script>
   </body>
 </html>
@@ -93,124 +109,132 @@ const currentPath = Astro.url.pathname
 <style is:global>
   @import '../styles/global.css';
 
-  /* --- App Header --- */
+  /* App shell */
   .app-header {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: rgba(10, 14, 26, 0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--glass-border);
+    background: var(--color-nav-bg);
+    backdrop-filter: blur(18px);
+    padding: 13px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-bottom: 1px solid var(--color-divider);
   }
 
   .app-header__inner {
-    max-width: var(--content-max-width);
+    width: 100%;
+    max-width: 1240px;
     margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--space-6);
-    height: var(--header-height);
+    padding: 0 20px;
+    height: 100%;
   }
 
   .app-header__left {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
   }
 
   .app-header__logo {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 8px;
     text-decoration: none;
-    color: var(--color-text-primary);
-    font-weight: 700;
-    font-size: var(--font-size-lg);
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -.04em;
   }
 
   .app-header__logo-icon {
-    font-size: var(--font-size-2xl);
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    color: white;
+    background: var(--color-primary);
+    border-radius: 9px;
+    font-size: 16px;
   }
 
-  .app-header__logo-text {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+  .app-header__logo-tag { color: var(--color-ink-muted); font: 400 11px var(--font-body); letter-spacing: .02em; }
 
   .app-header__nav {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: 6px;
   }
 
   .app-header__link {
-    display: flex;
+    font-family: var(--font-body);
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-    border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
+    gap: 7px;
+    padding: 8px 11px;
+    border-radius: 9px;
+    font-size: 13px;
+    color: var(--color-ink-muted);
     text-decoration: none;
+    letter-spacing: -0.12px;
+    transition: color var(--transition-fast);
+    background: transparent;
+    border: none;
+    cursor: pointer;
   }
 
-  .app-header__link:hover {
-    color: var(--color-text-primary);
-    background: var(--glass-bg);
+  .app-header__link:hover, .app-header__link.active {
+    color: var(--color-ink);
+    background: rgba(255,255,255,.07);
   }
 
-  .app-header__link.active {
-    color: var(--color-text-primary);
-    background: var(--glass-bg-active);
-  }
+  .app-header__link.active { color: #fff; background: var(--color-primary-soft); }
 
   .app-header__right {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: 12px;
   }
 
   /* Mobile nav */
   .app-header__mobile-nav {
     display: flex;
     justify-content: space-around;
-    padding: var(--space-2) 0;
-    border-top: 1px solid var(--glass-border);
+    align-items: center;
+    background: rgba(21, 22, 26, .96);
+    padding: 8px 12px;
+    margin-top: 13px;
+    border-top: 1px solid var(--color-divider);
   }
 
   .app-header__mobile-link {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--font-size-xs);
-    color: var(--color-text-tertiary);
+    gap: 3px;
+    min-width: 64px;
+    padding: 5px 10px;
+    border-radius: 9px;
+    font-size: 17px;
+    color: var(--color-ink-muted);
     text-decoration: none;
-    border-radius: var(--radius-sm);
     transition: color var(--transition-fast);
   }
 
   .app-header__mobile-link.active {
-    color: var(--color-accent);
+    color: #fff;
+    background: var(--color-primary-soft);
   }
 
-  .app-header__mobile-link span:first-child {
-    font-size: var(--font-size-lg);
-  }
+  .app-header__mobile-link small { font-size: 10px; font-family: var(--font-body); }
 
   /* Main content */
   .app-main {
-    min-height: calc(100vh - var(--header-height));
+    min-height: calc(100vh - 58px);
     position: relative;
     z-index: 1;
   }
@@ -219,5 +243,30 @@ const currentPath = Astro.url.pathname
     min-height: 100vh;
     position: relative;
     z-index: 1;
+  }
+  
+  /* Footer */
+  .app-footer {
+    padding: 34px 0;
+    border-top: 1px solid var(--color-divider);
+    background-color: rgba(0,0,0,.18);
+  }
+
+  @media (min-width: 900px) {
+    body:has(#dashboard-page) .app-header__nav { display: none; }
+  }
+
+  @media (max-width: 540px) {
+    .app-header { padding: 10px 0; }
+    .app-header__inner { padding: 0 12px; }
+    .app-header__logo { gap: 7px; font-size: 15px; }
+    .app-header__logo-icon { width: 28px; height: 28px; border-radius: 8px; font-size: 14px; }
+    .app-header__right { gap: 6px; }
+    .app-header__right .btn { min-height: 38px; padding: 8px 11px; font-size: .8rem; white-space: nowrap; }
+  }
+
+  @media (max-width: 390px) {
+    .app-header__logo { font-size: 14px; }
+    .app-header__right .btn { padding-inline: 9px; font-size: .74rem; }
   }
 </style>

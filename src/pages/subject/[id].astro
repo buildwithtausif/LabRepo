@@ -22,27 +22,27 @@ const { id } = Astro.params;
           <span class="breadcrumb__separator">›</span>
           <a href="#" id="session-link">Session</a>
           <span class="breadcrumb__separator">›</span>
-          <span id="subject-name-crumb">Subject</span>
+          <span id="subject-name-crumb" class="text-ink">Subject</span>
         </nav>
 
-        <div class="page-header">
+        <div class="page-header flex items-center justify-between mb-8">
           <div>
-            <h1 id="subject-title" style="font-size: var(--font-size-2xl);">Subject</h1>
-            <p id="subject-stats" class="page-header__subtitle"></p>
+            <h1 id="subject-title" class="text-display-lg">Subject</h1>
+            <p id="subject-stats" class="text-muted mt-2"></p>
           </div>
-          <div class="flex gap-3">
-            <button class="btn btn--secondary" id="btn-download-subject"><i class="bi bi-download"></i> Download ZIP</button>
+          <div class="flex gap-4 flex-wrap">
+            <button class="btn btn--secondary-pill" id="btn-download-subject"><i class="bi bi-download"></i> Download ZIP</button>
             <button class="btn btn--primary" id="btn-new-work">+ New Work</button>
           </div>
         </div>
 
-        <div id="works-grid" class="grid grid-cols-3 gap-6" style="margin-top: var(--space-8);"></div>
+        <div id="works-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
 
         <div id="works-empty" class="empty-state" style="display: none;">
-          <div class="empty-state__icon"><i class="bi bi-flask"></i></div>
-          <h3 class="empty-state__title">No works yet</h3>
-          <p class="empty-state__description">Create a new work entry and upload your lab files.</p>
-          <button class="btn btn--primary btn--lg" id="btn-empty-new-work">+ Create Work</button>
+          <div class="text-hero text-muted mb-4"><i class="bi bi-flask"></i></div>
+          <h3 class="text-display-lg mb-2">No works yet</h3>
+          <p class="text-lead text-muted mb-8">Create a new work entry and upload your lab files.</p>
+          <button class="btn btn--primary" id="btn-empty-new-work">Create Work</button>
         </div>
       </div>
     </div>
@@ -50,39 +50,39 @@ const { id } = Astro.params;
     <!-- New Work + Upload Modal -->
     <div id="work-modal" class="modal-overlay" style="display: none;">
       <div class="modal" style="max-width: 560px;">
-        <h3 class="modal__title">New Work</h3>
-        <p class="modal__description">Create a work entry and optionally upload files.</p>
+        <h3 class="text-body-strong mb-2">New Work</h3>
+        <p class="text-caption text-muted mb-6">Create a work entry and optionally upload files.</p>
         
-        <label style="font-size: var(--font-size-sm); color: var(--color-text-secondary); display: block; margin-bottom: var(--space-2);">Work Title</label>
+        <label class="text-caption text-muted block mb-2">Work Title</label>
         <input type="text" class="input" id="work-title-input" autocomplete="off" />
-        <p style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-top: var(--space-1);">
+        <p class="text-caption text-muted mt-2 mb-6">
           Leave empty to use today's date.
         </p>
 
-        <div style="margin-top: var(--space-6);">
-          <label style="font-size: var(--font-size-sm); color: var(--color-text-secondary); display: block; margin-bottom: var(--space-2);">Files (optional)</label>
+        <div>
+          <label class="text-caption text-muted block mb-2">Files (optional)</label>
           <div class="drop-zone" id="drop-zone">
-            <div class="drop-zone__icon"><i class="bi bi-folder2-open"></i></div>
-            <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+            <div class="text-display-lg text-muted mb-2"><i class="bi bi-folder2-open"></i></div>
+            <p class="text-body-strong mb-1">
               Drag & drop files here, or click to browse
             </p>
-            <p style="color: var(--color-text-tertiary); font-size: var(--font-size-xs); margin-top: var(--space-2);">
+            <p class="text-caption text-muted">
               Max 25 MB total
             </p>
             <input type="file" id="file-input" multiple style="display: none;" />
           </div>
-          <div id="selected-files" style="margin-top: var(--space-3); max-height: 240px; overflow-y: auto; overflow-x: hidden; padding-right: var(--space-2);"></div>
+          <div id="selected-files" class="mt-4" style="max-height: 240px; overflow-y: auto; overflow-x: hidden; padding-right: 8px;"></div>
         </div>
 
         <!-- Upload progress -->
-        <div id="upload-progress" style="display: none; margin-top: var(--space-4);">
+        <div id="upload-progress" style="display: none;" class="mt-6">
           <div class="progress-bar">
             <div class="progress-bar__fill" id="progress-fill" style="width: 0%"></div>
           </div>
-          <p id="upload-status" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-top: var(--space-2);">Uploading...</p>
+          <p id="upload-status" class="text-caption text-muted mt-2">Uploading...</p>
         </div>
 
-        <div class="modal__actions" style="margin-top: var(--space-6);">
+        <div class="flex justify-between gap-4 mt-8">
           <button class="btn btn--ghost" id="work-modal-cancel">Cancel</button>
           <button class="btn btn--primary" id="work-modal-save">Create Work</button>
         </div>
@@ -147,19 +147,19 @@ const { id } = Astro.params;
 
         function renderWorks(works: any[]) {
           const grid = document.getElementById('works-grid')!;
-          grid.innerHTML = works.map((work: any, i: number) => `
-            <div class="glass-card glass-card--interactive animate-fade-in-up stagger-${Math.min(i + 1, 5)}" onclick="window.location.href='/work/${work.id}'">
-              <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
-                <span style="font-size: 1.5rem;"><i class="bi bi-flask"></i></span>
-                <div class="card-actions flex gap-2" onclick="event.stopPropagation();">
-                  <button class="btn btn--ghost btn--sm btn-delete-work" data-id="${work.id}" data-title="${work.title}"><i class="bi bi-trash3"></i></button>
+          grid.innerHTML = works.map((work: any) => `
+            <div class="store-utility-card animate-fade-in" style="cursor: pointer;" onclick="window.location.href='/work/${work.id}'">
+              <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <span class="text-display-lg text-muted"><i class="bi bi-flask"></i></span>
+                <div class="card-actions flex gap-2 shrink-0" onclick="event.stopPropagation();">
+                  <button class="btn btn--ghost btn-delete-work btn--sm" data-id="${work.id}" data-title="${work.title}" title="Delete" style="color: #ff3b30;"><i class="bi bi-trash3"></i></button>
                 </div>
               </div>
-              <h3 style="margin-bottom: var(--space-2); font-size: var(--font-size-md);">${work.title}</h3>
-              <div class="flex gap-4" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+              <h3 class="text-body-strong mb-2">${work.title}</h3>
+              <div class="flex gap-4 text-caption text-muted">
                 <span>${work.file_count || 0} file${work.file_count !== 1 ? 's' : ''}</span>
                 <span>${formatSize(work.total_size || 0)}</span>
-                <span>${formatRelativeTime(work.updated_at || work.created_at)}</span>
+                <span class="hide-mobile">${formatRelativeTime(work.updated_at || work.created_at)}</span>
               </div>
             </div>
           `).join('');
@@ -178,7 +178,6 @@ const { id } = Astro.params;
           });
         }
 
-        // New work modal with file upload
         const workModal = document.getElementById('work-modal')!;
         const titleInput = document.getElementById('work-title-input') as HTMLInputElement;
         const dropZone = document.getElementById('drop-zone')!;
@@ -186,7 +185,6 @@ const { id } = Astro.params;
         const selectedFilesDiv = document.getElementById('selected-files')!;
         let selectedFiles: File[] = [];
 
-        // Default title = today's date
         titleInput.placeholder = new Date().toISOString().split('T')[0];
 
         function openWorkModal() {
@@ -200,17 +198,16 @@ const { id } = Astro.params;
         }
 
         document.getElementById('btn-new-work')!.addEventListener('click', openWorkModal);
-        document.getElementById('btn-empty-new-work')!.addEventListener('click', openWorkModal);
+        document.getElementById('btn-empty-new-work')?.addEventListener('click', openWorkModal);
         document.getElementById('work-modal-cancel')!.addEventListener('click', () => { workModal.style.display = 'none'; });
         workModal.addEventListener('click', (e) => { if (e.target === workModal) workModal.style.display = 'none'; });
 
-        // Drag & drop
         dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-zone--active'); });
-        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drop-zone--active'); });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('active'); });
         dropZone.addEventListener('drop', (e) => {
           e.preventDefault();
-          dropZone.classList.remove('drop-zone--active');
+          dropZone.classList.remove('active');
           if (e.dataTransfer?.files) handleFiles(Array.from(e.dataTransfer.files));
         });
 
@@ -228,18 +225,18 @@ const { id } = Astro.params;
           const tooLarge = totalSize > 25 * 1024 * 1024;
 
           selectedFilesDiv.innerHTML = selectedFiles.map((f, i) => `
-            <div class="selected-file flex items-center justify-between" style="padding: var(--space-2) 0; border-bottom: 1px solid var(--glass-border); font-size: var(--font-size-xs);">
-              <span style="color: var(--color-text-secondary);"><i class="bi bi-file-earmark-text"></i> ${f.name}</span>
+            <div class="selected-file flex items-center justify-between py-2 border-b">
+              <span class="text-caption text-muted truncate mr-4"><i class="bi bi-file-earmark-text"></i> ${f.name}</span>
               <span class="flex items-center gap-2">
-                <span style="color: var(--color-text-tertiary);">${formatSize(f.size)}</span>
-                <button class="btn btn--ghost btn--sm remove-file" data-index="${i}" style="padding: 2px 6px;">×</button>
+                <span class="text-caption text-muted">${formatSize(f.size)}</span>
+                <button class="btn btn--ghost remove-file" data-index="${i}" style="padding: 2px 8px;">×</button>
               </span>
             </div>
           `).join('');
 
           if (selectedFiles.length > 0) {
             selectedFilesDiv.innerHTML += `
-              <div style="margin-top: var(--space-2); font-size: var(--font-size-xs); color: ${tooLarge ? 'var(--color-danger)' : 'var(--color-text-tertiary)'};">
+              <div class="text-caption mt-2 ${tooLarge ? 'text-danger' : 'text-muted'}">
                 Total: ${formatSize(totalSize)} / 25 MB ${tooLarge ? '— exceeds limit!' : ''}
               </div>
             `;
@@ -253,7 +250,6 @@ const { id } = Astro.params;
           });
         }
 
-        // Save work
         document.getElementById('work-modal-save')!.addEventListener('click', async () => {
           const title = titleInput.value.trim() || undefined;
           const saveBtn = document.getElementById('work-modal-save') as HTMLButtonElement;
@@ -262,10 +258,8 @@ const { id } = Astro.params;
             saveBtn.disabled = true;
             saveBtn.textContent = 'Creating...';
 
-            // Create work
             const { work } = await api.createWork(subjectId, title);
 
-            // Upload files if any
             if (selectedFiles.length > 0) {
               const totalSize = selectedFiles.reduce((a, f) => a + f.size, 0);
               if (totalSize > 25 * 1024 * 1024) {
@@ -301,7 +295,6 @@ const { id } = Astro.params;
           if (e.key === 'Escape') workModal.style.display = 'none';
         });
 
-        // Download subject ZIP
         document.getElementById('btn-download-subject')!.addEventListener('click', async () => {
           try {
             showToast('Preparing download...', 'info');
@@ -314,9 +307,59 @@ const { id } = Astro.params;
     </script>
 
     <style>
-      .page-header__subtitle { font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 80px 0;
+      }
+      .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--color-divider);
+        border-top-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+        margin-bottom: var(--space-4);
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
       .card-actions { opacity: 0; transition: opacity var(--transition-fast); }
-      .glass-card:hover .card-actions { opacity: 1; }
+      .store-utility-card:hover .card-actions { opacity: 1; }
+      
+      .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--color-divider);
+        border-radius: var(--radius-pill);
+        overflow: hidden;
+      }
+      .progress-bar__fill {
+        height: 100%;
+        background: var(--color-primary);
+        border-radius: var(--radius-pill);
+        transition: width 0.3s ease;
+      }
+
+      .text-danger { color: #ff3b30; }
+      .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .py-2 { padding-top: 8px; padding-bottom: 8px; }
+      .mr-4 { margin-right: 17px; }
+      .border-b { border-bottom: 1px solid var(--color-divider); }
+      .mb-1 { margin-bottom: 4px; }
+      .mb-2 { margin-bottom: 8px; }
+      .mb-4 { margin-bottom: 17px; }
+      .mb-6 { margin-bottom: 24px; }
+      .mb-8 { margin-bottom: 32px; }
+      .mt-2 { margin-top: 8px; }
+      .mt-4 { margin-top: 17px; }
+      .mt-6 { margin-top: 24px; }
+      .mt-8 { margin-top: 32px; }
+      .block { display: block; }
+
       @media (max-width: 768px) {
         .page-header { flex-direction: column; align-items: flex-start !important; gap: var(--space-4); }
         .card-actions { opacity: 1; }

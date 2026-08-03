@@ -1,26 +1,36 @@
 ---
-import Layout from '../Layouts/Layout.astro'
-import { Show } from '@clerk/astro/components'
+import Layout from "../Layouts/Layout.astro";
+import { Show } from "@clerk/astro/components";
 ---
 
 <Layout title="Search">
   <Show when="signed-out">
-    <script>window.location.href = '/';</script>
+    <script>
+      window.location.href = "/";
+    </script>
   </Show>
 
   <Show when="signed-in">
     <div class="container page-content">
-      <div class="page-header">
-        <h1 style="font-size: var(--font-size-2xl);"><i class="bi bi-search"></i> Search</h1>
+      <div class="page-header mb-8">
+        <h1 class="text-display-lg">
+          <i class="bi bi-search"></i> Search
+        </h1>
       </div>
 
       <!-- Search bar -->
-      <div class="search-bar" style="margin-top: var(--space-6);">
-        <input type="text" class="input input--lg" id="search-input" placeholder="Search files, works, subjects..." autocomplete="off" />
+      <div class="search-bar mb-4">
+        <input
+          type="text"
+          class="input"
+          id="search-input"
+          placeholder="Search files, works, subjects..."
+          autocomplete="off"
+        />
       </div>
 
       <!-- Filters -->
-      <div class="filters flex gap-4 items-center" style="margin-top: var(--space-4); flex-wrap: wrap;">
+      <div class="filters flex gap-4 items-center mb-12 flex-wrap">
         <select class="input" id="filter-sort" style="width: auto; min-width: 160px;">
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
@@ -43,79 +53,108 @@ import { Show } from '@clerk/astro/components'
       </div>
 
       <!-- Results -->
-      <div id="search-results" style="margin-top: var(--space-8);"></div>
+      <div id="search-results"></div>
 
       <div id="search-empty" class="empty-state" style="display: none;">
-        <div class="empty-state__icon"><i class="bi bi-search"></i></div>
-        <h3 class="empty-state__title">No results found</h3>
-        <p class="empty-state__description">Try different search terms or adjust your filters.</p>
+        <div class="text-hero text-muted mb-4"><i class="bi bi-search"></i></div>
+        <h3 class="text-display-lg mb-2">No results found</h3>
+        <p class="text-lead text-muted">
+          Try different search terms or adjust your filters.
+        </p>
       </div>
 
       <div id="search-initial" class="empty-state">
-        <div class="empty-state__icon"><i class="bi bi-search"></i></div>
-        <h3 class="empty-state__title">Search your files</h3>
-        <p class="empty-state__description">Search by filename, work title, or subject name.</p>
+        <div class="text-hero text-muted mb-4"><i class="bi bi-search"></i></div>
+        <h3 class="text-display-lg mb-2">Search your files</h3>
+        <p class="text-lead text-muted">
+          Search by filename, work title, or subject name.
+        </p>
       </div>
     </div>
 
+    <div id="search-preview-panel" class="search-preview-panel" style="display: none;" aria-label="File preview">
+      <div class="search-preview-panel__header">
+        <div class="flex items-center gap-4 min-w-0">
+          <button class="btn btn--ghost btn--sm" id="search-preview-close" aria-label="Close preview"><i class="bi bi-x-lg"></i></button>
+          <span id="search-preview-filename" class="text-body-strong truncate"></span>
+          <span id="search-preview-size" class="btn--dark-utility p-1 rounded hide-mobile text-caption"></span>
+        </div>
+        <button class="btn btn--primary btn--sm" id="search-preview-download"><i class="bi bi-download"></i> Download</button>
+      </div>
+      <div class="search-preview-panel__content" id="search-preview-content"></div>
+    </div>
+
     <script>
-      document.addEventListener('DOMContentLoaded', async () => {
+      document.addEventListener("DOMContentLoaded", async () => {
         const api = (window as any).__labrepo_api;
         const showToast = (window as any).__labrepo_showToast;
+        const downloadBlob = (window as any).__labrepo_downloadBlob;
         const formatSize = (window as any).__labrepo_formatSize;
         const formatRelativeTime = (window as any).__labrepo_formatRelativeTime;
+        const textExts = new Set(['py','js','mjs','cjs','jsx','ts','tsx','c','cpp','h','hpp','java','kt','cs','go','rs','swift','php','rb','r','scala','sql','html','css','scss','json','yaml','yml','xml','md','txt','csv','env','sh','bat','ps1','toml','ini','cfg','conf','log','dockerfile','tex','rtf']);
+        const langMap: Record<string, string> = {
+          py: 'python', js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
+          c: 'c', h: 'c', hpp: 'cpp', cpp: 'cpp', java: 'java', kt: 'kotlin', cs: 'csharp', go: 'go', rs: 'rust', swift: 'swift', php: 'php', rb: 'ruby', r: 'r', scala: 'scala', sql: 'sql',
+          html: 'html', css: 'css', scss: 'scss', json: 'json', yaml: 'yaml', yml: 'yaml', xml: 'xml', md: 'markdown', txt: 'plaintext', csv: 'plaintext', env: 'plaintext', sh: 'bash', bat: 'batch', ps1: 'powershell', toml: 'toml', ini: 'ini', cfg: 'ini', conf: 'ini', log: 'plaintext', dockerfile: 'dockerfile', tex: 'latex', rtf: 'plaintext'
+        };
 
-        await new Promise<void>((r) => { const c = () => { if ((window as any).Clerk?.session) r(); else setTimeout(c, 100); }; c(); });
+        await new Promise<void>((r) => {
+          const c = () => {
+            if ((window as any).Clerk?.session) r();
+            else setTimeout(c, 100);
+          };
+          c();
+        });
 
         // Load filter options
         try {
           const filters = await api.getSearchFilters();
 
-          const sessionSelect = document.getElementById('filter-session') as HTMLSelectElement;
+          const sessionSelect = document.getElementById("filter-session") as HTMLSelectElement;
           filters.sessions.forEach((s: any) => {
-            const opt = document.createElement('option');
+            const opt = document.createElement("option");
             opt.value = s.id;
             opt.textContent = s.name;
             sessionSelect.appendChild(opt);
           });
 
-          const subjectSelect = document.getElementById('filter-subject') as HTMLSelectElement;
+          const subjectSelect = document.getElementById("filter-subject") as HTMLSelectElement;
           filters.subjects.forEach((s: any) => {
-            const opt = document.createElement('option');
+            const opt = document.createElement("option");
             opt.value = s.id;
             opt.textContent = s.name;
             subjectSelect.appendChild(opt);
           });
 
-          const extSelect = document.getElementById('filter-ext') as HTMLSelectElement;
+          const extSelect = document.getElementById("filter-ext") as HTMLSelectElement;
           filters.extensions.forEach((ext: string) => {
-            const opt = document.createElement('option');
+            const opt = document.createElement("option");
             opt.value = ext;
             opt.textContent = `.${ext}`;
             extSelect.appendChild(opt);
           });
         } catch {}
 
-        const searchInput = document.getElementById('search-input') as HTMLInputElement;
+        const searchInput = document.getElementById("search-input") as HTMLInputElement;
         let debounceTimer: number;
 
         function doSearch() {
           clearTimeout(debounceTimer);
           debounceTimer = window.setTimeout(async () => {
             const q = searchInput.value.trim();
-            const sort = (document.getElementById('filter-sort') as HTMLSelectElement).value;
-            const session_id = (document.getElementById('filter-session') as HTMLSelectElement).value;
-            const subject_id = (document.getElementById('filter-subject') as HTMLSelectElement).value;
-            const extension = (document.getElementById('filter-ext') as HTMLSelectElement).value;
+            const sort = (document.getElementById("filter-sort") as HTMLSelectElement).value;
+            const session_id = (document.getElementById("filter-session") as HTMLSelectElement).value;
+            const subject_id = (document.getElementById("filter-subject") as HTMLSelectElement).value;
+            const extension = (document.getElementById("filter-ext") as HTMLSelectElement).value;
 
             if (!q && !session_id && !subject_id && !extension) {
-              document.getElementById('search-results')!.innerHTML = '';
-              document.getElementById('search-empty')!.style.display = 'none';
-              document.getElementById('search-initial')!.style.display = 'flex';
+              document.getElementById("search-results")!.innerHTML = "";
+              document.getElementById("search-empty")!.style.display = "none";
+              document.getElementById("search-initial")!.style.display = "flex";
               return;
             }
 
-            document.getElementById('search-initial')!.style.display = 'none';
+            document.getElementById("search-initial")!.style.display = "none";
 
             try {
               const results = await api.search({
@@ -129,87 +168,172 @@ import { Show } from '@clerk/astro/components'
               const totalResults = (results.files?.length || 0) + (results.works?.length || 0);
 
               if (totalResults === 0) {
-                document.getElementById('search-results')!.innerHTML = '';
-                document.getElementById('search-empty')!.style.display = 'flex';
+                document.getElementById("search-results")!.innerHTML = "";
+                document.getElementById("search-empty")!.style.display = "flex";
               } else {
-                document.getElementById('search-empty')!.style.display = 'none';
+                document.getElementById("search-empty")!.style.display = "none";
                 renderResults(results);
               }
             } catch (e: any) {
-              showToast('Search failed', 'error');
+              showToast("Search failed", "error");
             }
           }, 300);
         }
 
-        searchInput.addEventListener('input', doSearch);
-        document.getElementById('filter-sort')!.addEventListener('change', doSearch);
-        document.getElementById('filter-session')!.addEventListener('change', doSearch);
-        document.getElementById('filter-subject')!.addEventListener('change', doSearch);
-        document.getElementById('filter-ext')!.addEventListener('change', doSearch);
+        searchInput.addEventListener("input", doSearch);
+        document.getElementById("filter-sort")!.addEventListener("change", doSearch);
+        document.getElementById("filter-session")!.addEventListener("change", doSearch);
+        document.getElementById("filter-subject")!.addEventListener("change", doSearch);
+        document.getElementById("filter-ext")!.addEventListener("change", doSearch);
 
         searchInput.focus();
 
         function renderResults(results: any) {
-          const container = document.getElementById('search-results')!;
-          let html = '';
+          const container = document.getElementById("search-results")!;
+          let html = "";
 
           if (results.files && results.files.length > 0) {
-            html += `<h3 style="margin-bottom: var(--space-4); font-size: var(--font-size-md); color: var(--color-text-secondary);">Files (${results.files.length})</h3>`;
-            html += results.files.map((file: any, i: number) => `
-              <a href="/work/${file.work_id}" class="search-result glass-card animate-fade-in-up stagger-${Math.min(i + 1, 5)}" style="display: block; text-decoration: none; padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3" style="min-width: 0;">
-                    <span><i class="bi bi-file-earmark-text"></i></span>
-                    <div style="min-width: 0;">
-                      <div style="font-weight: 500; font-size: var(--font-size-sm); color: var(--color-text-primary);">${file.filename}</div>
-                      <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+            html += `<h3 class="text-body-strong text-muted mb-4">Files (${results.files.length})</h3>`;
+            html += results.files
+              .map(
+                (file: any) => {
+                  const isText = textExts.has(file.extension);
+                  return `
+              <div class="search-result store-utility-card animate-fade-in mb-4">
+                <a href="/work/${file.work_id}" class="search-result__details">
+                  <div class="flex items-center gap-4 min-w-0">
+                    <span class="text-display-lg text-muted"><i class="bi bi-file-earmark-text"></i></span>
+                    <div class="min-w-0">
+                      <div class="text-body-strong text-ink">${file.filename}</div>
+                      <div class="text-caption text-muted truncate">
                         ${file.session_name} › ${file.subject_name} › ${file.work_title}
                       </div>
                     </div>
                   </div>
-                  <div class="flex gap-3 items-center" style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
-                    <span class="badge badge--accent" style="font-size: 10px;">.${file.extension}</span>
-                    <span>${formatSize(file.size_bytes)}</span>
-                    <span class="hide-mobile">${formatRelativeTime(file.created_at)}</span>
-                  </div>
+                </a>
+                <div class="search-result__meta flex gap-4 items-center text-caption text-muted">
+                  <span class="btn--dark-utility p-1 rounded">.${file.extension}</span>
+                  <span class="hide-mobile">${formatSize(file.size_bytes)}</span>
+                  <span class="hide-mobile">${formatRelativeTime(file.created_at)}</span>
+                  ${isText ? `<button class="btn btn--secondary-pill btn--sm btn-search-preview" data-id="${file.id}" data-name="${file.filename}" data-ext="${file.extension}"><i class="bi bi-code-slash"></i> Preview</button>` : ''}
                 </div>
-              </a>
-            `).join('');
+              </div>
+            `;
+                },
+              )
+              .join("");
           }
 
           if (results.works && results.works.length > 0) {
-            html += `<h3 style="margin-top: var(--space-8); margin-bottom: var(--space-4); font-size: var(--font-size-md); color: var(--color-text-secondary);">Works (${results.works.length})</h3>`;
-            html += results.works.map((work: any, i: number) => `
-              <a href="/work/${work.id}" class="search-result glass-card animate-fade-in-up" style="display: block; text-decoration: none; padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3);">
+            html += `<h3 class="text-body-strong text-muted mt-8 mb-4">Works (${results.works.length})</h3>`;
+            html += results.works
+              .map(
+                (work: any) => `
+              <a href="/work/${work.id}" class="search-result store-utility-card animate-fade-in block text-decoration-none mb-4">
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <span><i class="bi bi-flask"></i></span>
+                  <div class="flex items-center gap-4">
+                    <span class="text-display-lg text-muted"><i class="bi bi-flask"></i></span>
                     <div>
-                      <div style="font-weight: 500; font-size: var(--font-size-sm); color: var(--color-text-primary);">${work.title}</div>
-                      <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                      <div class="text-body-strong text-ink">${work.title}</div>
+                      <div class="text-caption text-muted">
                         ${work.session_name} › ${work.subject_name} · ${work.file_count} files
                       </div>
                     </div>
                   </div>
                 </div>
               </a>
-            `).join('');
+            `,
+              )
+              .join("");
           }
 
           container.innerHTML = html;
+          container.querySelectorAll(".btn-search-preview").forEach((button: any) => {
+            button.addEventListener("click", () => openPreview(parseInt(button.dataset.id), button.dataset.name, button.dataset.ext));
+          });
         }
+
+        const previewPanel = document.getElementById("search-preview-panel")!;
+        let currentPreviewId: number | null = null;
+
+        async function openPreview(fileId: number, filename: string, extension: string) {
+          currentPreviewId = fileId;
+          previewPanel.style.display = "flex";
+          document.getElementById("search-preview-filename")!.textContent = filename;
+          document.getElementById("search-preview-content")!.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+          try {
+            const result = await api.previewFile(fileId);
+            document.getElementById("search-preview-size")!.textContent = formatSize(result.file.size_bytes);
+            const escaped = result.content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            document.getElementById("search-preview-content")!.innerHTML = `<pre class="search-preview-code"><code class="language-${langMap[extension] || 'plaintext'}">${escaped}</code></pre>`;
+            const code = document.querySelector("#search-preview-content code");
+            if (code && (window as any).hljs) (window as any).hljs.highlightElement(code);
+          } catch (error: any) {
+            document.getElementById("search-preview-content")!.innerHTML = '<div class="empty-state"><p style="color: var(--color-danger);">Failed to load preview</p></div>';
+          }
+        }
+
+        function closePreview() { previewPanel.style.display = "none"; currentPreviewId = null; }
+        document.getElementById("search-preview-close")!.addEventListener("click", closePreview);
+        document.getElementById("search-preview-download")!.addEventListener("click", async () => {
+          if (currentPreviewId === null) return;
+          try { downloadBlob(await api.downloadFile(currentPreviewId), document.getElementById("search-preview-filename")!.textContent || "file"); }
+          catch (error: any) { showToast(error.message, "error"); }
+        });
       });
     </script>
 
-    <style>
+    <style is:global>
       .search-bar { position: relative; }
-      .search-result:hover {
-        transform: translateY(-1px);
-        border-color: var(--glass-border-hover);
+      .search-result {
+        padding: 17px 24px;
+        transition: transform var(--transition-fast), border-color var(--transition-fast);
       }
+      .search-result:hover {
+        transform: translateY(-2px);
+        border-color: var(--color-primary);
+      }
+      .search-result { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      .search-result__details { min-width: 0; flex: 1; color: inherit; }
+      .search-result__meta { flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
+      .search-preview-panel { position: fixed; top: 58px; right: 0; bottom: 0; z-index: 60; width: min(50%, 700px); display: flex; flex-direction: column; overflow: hidden; background: #101114; border-left: 1px solid var(--color-divider); box-shadow: -10px 0 35px rgba(0,0,0,.28); }
+      .search-preview-panel__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 0 0 auto; padding: 14px 18px; background: #1d1e23; border-bottom: 1px solid var(--color-divider); }
+      .search-preview-panel__content { flex: 1; min-height: 0; overflow: auto; background: #0d1117; }
+      .search-preview-code { margin: 0; padding: 24px; color: #c9d1d9; background: transparent !important; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 14px; line-height: 1.7; white-space: pre; tab-size: 4; }
+      .search-preview-code code { background: transparent !important; }
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 80px 0;
+      }
+      .block { display: block; }
+      .text-decoration-none { text-decoration: none; }
+      .text-ink { color: var(--color-ink); }
+      .min-w-0 { min-width: 0; }
+      .truncate {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .p-1 { padding: 4px 8px; }
+      .rounded { border-radius: 4px; }
+      .mb-2 { margin-bottom: 8px; }
+      .mb-4 { margin-bottom: 17px; }
+      .mb-8 { margin-bottom: 32px; }
+      .mb-12 { margin-bottom: 48px; }
+      .mt-8 { margin-top: 32px; }
+
       @media (max-width: 768px) {
         .filters { flex-direction: column; }
         .filters select { width: 100% !important; }
+        .search-result { align-items: flex-start; flex-direction: column; }
+        .search-result__meta { width: 100%; justify-content: flex-start; }
+        .search-preview-panel { top: 114px; width: 100%; height: calc(100dvh - 114px); max-width: none; border-top: 1px solid var(--color-divider); border-left: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+        .search-preview-panel__header { padding: 13px 14px; }
+        .search-preview-code { padding: 16px; font-size: 13px; line-height: 1.62; }
       }
     </style>
   </Show>

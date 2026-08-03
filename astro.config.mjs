@@ -3,8 +3,10 @@ import node from "@astrojs/node";
 import clerk from "@clerk/astro";
 import icon from "astro-icon";
 
+import react from "@astrojs/react";
+
 export default defineConfig({
-  integrations: [clerk(), icon()],
+  integrations: [clerk(), icon(), react()],
   adapter: node({ mode: "standalone" }),
   output: "server",
   vite: {
