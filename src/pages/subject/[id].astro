@@ -185,6 +185,15 @@ const { id } = Astro.params;
         const selectedFilesDiv = document.getElementById('selected-files')!;
         let selectedFiles: File[] = [];
 
+        const allowedExtensions = new Set([
+          'py', 'ipynb', 'js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'c', 'cpp', 'h', 'hpp', 'java', 'kt', 'cs',
+          'go', 'rs', 'swift', 'php', 'rb', 'r', 'scala', 'sql', 'html', 'css',
+          'scss', 'json', 'yaml', 'yml', 'xml', 'md', 'txt', 'csv', 'parquet',
+          'feather', 'pkl', 'joblib', 'onnx', 'pt', 'pth', 'keras', 'h5',
+          'env', 'sh', 'bat', 'ps1', 'toml', 'ini', 'cfg', 'conf', 'log', 'dockerfile',
+          'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'tex'
+        ]);
+
         titleInput.placeholder = new Date().toISOString().split('T')[0];
 
         function openWorkModal() {
@@ -193,8 +202,25 @@ const { id } = Astro.params;
           selectedFiles = [];
           fileInput.value = '';
           selectedFilesDiv.innerHTML = '';
-          document.getElementById('upload-progress')!.style.display = 'none';
+          resetUploadProgress();
           titleInput.focus();
+        }
+
+        function resetUploadProgress() {
+          const uploadProgress = document.getElementById('upload-progress')!;
+          const progressFill = document.getElementById('progress-fill')!;
+          const uploadStatus = document.getElementById('upload-status')!;
+          uploadProgress.style.display = 'none';
+          progressFill.style.width = '0%';
+          uploadStatus.textContent = 'Uploading...';
+        }
+
+        function getUnsupportedFiles(files: File[]) {
+          return files.filter((file) => {
+            const parts = file.name.split('.');
+            const extension = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+            return !allowedExtensions.has(extension);
+          });
         }
 
         document.getElementById('btn-new-work')!.addEventListener('click', openWorkModal);
@@ -216,6 +242,13 @@ const { id } = Astro.params;
         });
 
         function handleFiles(files: File[]) {
+          const unsupportedFiles = getUnsupportedFiles(files);
+          if (unsupportedFiles.length > 0) {
+            const names = unsupportedFiles.map((file) => file.name).join(', ');
+            showToast(`Unsupported file extension: ${names}`, 'error');
+            return;
+          }
+
           selectedFiles = [...selectedFiles, ...files];
           renderSelectedFiles();
         }
@@ -258,12 +291,21 @@ const { id } = Astro.params;
             saveBtn.disabled = true;
             saveBtn.textContent = 'Creating...';
 
+            const unsupportedFiles = getUnsupportedFiles(selectedFiles);
+            if (unsupportedFiles.length > 0) {
+              const names = unsupportedFiles.map((file) => file.name).join(', ');
+              showToast(`Unsupported file extension: ${names}`, 'error');
+              resetUploadProgress();
+              return;
+            }
+
             const { work } = await api.createWork(subjectId, title);
 
             if (selectedFiles.length > 0) {
               const totalSize = selectedFiles.reduce((a, f) => a + f.size, 0);
               if (totalSize > 25 * 1024 * 1024) {
                 showToast('Total file size exceeds 25 MB', 'error');
+                resetUploadProgress();
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Create Work';
                 return;
@@ -283,6 +325,7 @@ const { id } = Astro.params;
             workModal.style.display = 'none';
             await loadWorks();
           } catch (err: any) {
+            resetUploadProgress();
             showToast(err.message, 'error');
           } finally {
             saveBtn.disabled = false;

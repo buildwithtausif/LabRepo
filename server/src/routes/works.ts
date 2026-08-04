@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { getDb } from '../db/index.js';
+import { getDatabase } from '../db/runtime.js';
 
 interface CreateWorkBody {
   title?: string;
@@ -14,25 +14,25 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get<{ Params: { subjectId: string } }>(
     '/api/subjects/:subjectId/works',
     async (request, reply) => {
-      const db = getDb();
+      const db = getDatabase();
 
       // Verify subject ownership
-      const subject = db.prepare(
+      const subject = await db.get(
         'SELECT id FROM subjects WHERE id = ? AND user_id = ?'
-      ).get(request.params.subjectId, request.userId);
+      , [request.params.subjectId, request.userId]);
 
       if (!subject) {
         return reply.status(404).send({ error: 'Subject not found' });
       }
 
-      const works = db.prepare(`
+      const works = await db.all(`
         SELECT w.*,
           (SELECT COUNT(*) FROM files WHERE work_id = w.id) as file_count,
           (SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = w.id) as total_size
         FROM works w
         WHERE w.subject_id = ?
         ORDER BY w.created_at DESC
-      `).all(request.params.subjectId);
+      `, [request.params.subjectId]);
 
       return { works };
     }
@@ -40,8 +40,8 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get a single work
   fastify.get<{ Params: { id: string } }>('/api/works/:id', async (request, reply) => {
-    const db = getDb();
-    const work = db.prepare(`
+    const db = getDatabase();
+    const work = await db.get(`
       SELECT w.*,
         sub.name as subject_name,
         sub.id as subject_id,
@@ -53,7 +53,7 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
       JOIN subjects sub ON w.subject_id = sub.id
       JOIN academic_sessions s ON sub.session_id = s.id
       WHERE w.id = ? AND w.user_id = ?
-    `).get(request.params.id, request.userId) as any;
+    `, [request.params.id, request.userId]) as any;
 
     if (!work) {
       return reply.status(404).send({ error: 'Work not found' });
@@ -66,25 +66,27 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post<{ Params: { subjectId: string }; Body: CreateWorkBody }>(
     '/api/subjects/:subjectId/works',
     async (request, reply) => {
-      const db = getDb();
-
-      // Verify subject ownership
-      const subject = db.prepare(
-        'SELECT id FROM subjects WHERE id = ? AND user_id = ?'
-      ).get(request.params.subjectId, request.userId);
-
-      if (!subject) {
-        return reply.status(404).send({ error: 'Subject not found' });
-      }
+      const db = getDatabase();
 
       // Default title = current date
       const title = request.body?.title?.trim() || new Date().toISOString().split('T')[0];
 
-      const result = db.prepare(
-        'INSERT INTO works (subject_id, user_id, title) VALUES (?, ?, ?)'
-      ).run(request.params.subjectId, request.userId, title);
+      const work = await db.get(
+        `
+          INSERT INTO works (subject_id, user_id, title)
+          SELECT ?, ?, ?
+          WHERE EXISTS (
+            SELECT 1 FROM subjects WHERE id = ? AND user_id = ?
+          )
+          RETURNING *
+        `,
+        [request.params.subjectId, request.userId, title, request.params.subjectId, request.userId]
+      ) as any;
 
-      const work = db.prepare('SELECT * FROM works WHERE id = ?').get(result.lastInsertRowid);
+      if (!work) {
+        return reply.status(404).send({ error: 'Subject not found' });
+      }
+
       return reply.status(201).send({ work });
     }
   );
@@ -93,10 +95,10 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.patch<{ Params: { id: string }; Body: UpdateWorkBody }>(
     '/api/works/:id',
     async (request, reply) => {
-      const db = getDb();
-      const work = db.prepare(
+      const db = getDatabase();
+      const work = await db.get(
         'SELECT * FROM works WHERE id = ? AND user_id = ?'
-      ).get(request.params.id, request.userId) as any;
+      , [request.params.id, request.userId]) as any;
 
       if (!work) {
         return reply.status(404).send({ error: 'Work not found' });
@@ -107,40 +109,40 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: 'Work title cannot be empty' });
       }
 
-      db.prepare(`
-        UPDATE works SET title = COALESCE(?, title), updated_at = datetime('now')
+      const updated = await db.get(`
+        UPDATE works
+        SET title = COALESCE(?, title), updated_at = datetime('now')
         WHERE id = ? AND user_id = ?
-      `).run(title?.trim() ?? null, request.params.id, request.userId);
-
-      const updated = db.prepare('SELECT * FROM works WHERE id = ?').get(request.params.id);
+        RETURNING *
+      `, [title?.trim() ?? null, request.params.id, request.userId]);
       return { work: updated };
     }
   );
 
   // Delete work (soft delete)
   fastify.delete<{ Params: { id: string } }>('/api/works/:id', async (request, reply) => {
-    const db = getDb();
-    const work = db.prepare(
+    const db = getDatabase();
+    const work = await db.get(
       'SELECT * FROM works WHERE id = ? AND user_id = ?'
-    ).get(request.params.id, request.userId) as any;
+    , [request.params.id, request.userId]) as any;
 
     if (!work) {
       return reply.status(404).send({ error: 'Work not found' });
     }
 
-    const files = db.prepare('SELECT * FROM files WHERE work_id = ?').all(work.id);
+    const files = await db.all('SELECT * FROM files WHERE work_id = ?', [work.id]);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const deleteTransaction = db.transaction(() => {
-      db.prepare(`
+    const deleteTransaction = async () => {
+      await db.run(`
         INSERT INTO recycle_bin (user_id, item_type, item_id, original_data, expires_at)
         VALUES (?, 'work', ?, ?, ?)
-      `).run(request.userId, work.id, JSON.stringify({ work, files }), expiresAt);
+      `, [request.userId, work.id, JSON.stringify({ work, files }), expiresAt]);
 
-      db.prepare('DELETE FROM works WHERE id = ?').run(work.id);
-    });
+      await db.run('DELETE FROM works WHERE id = ?', [work.id]);
+    };
 
-    deleteTransaction();
+    await db.transaction(deleteTransaction);
     return { success: true, message: 'Work moved to recycle bin' };
   });
 }

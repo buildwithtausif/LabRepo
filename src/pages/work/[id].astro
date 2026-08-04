@@ -57,7 +57,17 @@ const { id } = Astro.params;
         <div class="drop-zone" id="drop-zone">
           <div class="text-display-lg text-muted mb-2"><i class="bi bi-folder2-open"></i></div>
           <p class="text-body-strong mb-1">Drag & drop files here, or click to browse</p>
-          <p class="text-caption text-muted">Max 25 MB total</p>
+          <div class="upload-help-row">
+            <p class="text-caption text-muted">Max 25 MB total</p>
+            <div class="supported-files-help" id="supported-files-help">
+              <button type="button" class="supported-files-info" id="supported-files-info" aria-label="Show supported file types" aria-expanded="false">?</button>
+              <div class="supported-files-popover" id="supported-files-popover" role="tooltip">
+                <div class="supported-files-popover__title">Supported file types</div>
+                <div class="supported-files-popover__body" id="supported-files-list"></div>
+              </div>
+            </div>
+          </div>
+          <p class="text-caption text-muted mt-2">Click the ? for the full supported file list.</p>
           <input type="file" id="file-input" multiple style="display: none;" />
         </div>
         <div id="selected-files" class="mt-4" style="max-height: 240px; overflow-y: auto; overflow-x: hidden; padding-right: 8px;"></div>
@@ -284,12 +294,67 @@ const { id } = Astro.params;
         const selectedFilesDiv = document.getElementById('selected-files')!;
         let selectedFiles: File[] = [];
 
+        const allowedExtensions = new Set(['py','ipynb','js','mjs','cjs','jsx','ts','tsx','c','cpp','h','hpp','java','kt','cs','go','rs','swift','php','rb','r','scala','sql','html','css','scss','json','yaml','yml','xml','md','txt','csv','parquet','feather','pkl','joblib','onnx','pt','pth','keras','h5','env','sh','bat','ps1','toml','ini','cfg','conf','log','dockerfile','pdf','doc','docx','xls','xlsx','ppt','pptx','rtf','tex']);
+        const supportedFileList = Array.from(allowedExtensions).sort().join(', ');
+
+        function getExtension(filename: string): string {
+          const parts = filename.split('.');
+          if (parts.length < 2) return '';
+          return parts[parts.length - 1].toLowerCase();
+        }
+
+        function getUnsupportedFiles(files: File[]) {
+          return files.filter((file) => !allowedExtensions.has(getExtension(file.name)));
+        }
+
+        function resetUploadProgress() {
+          const progress = document.getElementById('upload-progress')!;
+          const fill = document.getElementById('progress-fill')!;
+          const status = document.getElementById('upload-status')!;
+          progress.style.display = 'none';
+          fill.style.width = '0%';
+          status.textContent = '';
+        }
+
+        const supportedFilesHelp = document.getElementById('supported-files-help')!;
+        const supportedFilesInfo = document.getElementById('supported-files-info')!;
+        const supportedFilesPopover = document.getElementById('supported-files-popover')!;
+        const supportedFilesList = document.getElementById('supported-files-list')!;
+        supportedFilesList.textContent = supportedFileList;
+
+        function setSupportedFilesOpen(isOpen: boolean) {
+          supportedFilesHelp.classList.toggle('is-open', isOpen);
+          supportedFilesInfo.setAttribute('aria-expanded', String(isOpen));
+        }
+
+        supportedFilesInfo.addEventListener('click', (event) => {
+          event.stopPropagation();
+          setSupportedFilesOpen(!supportedFilesHelp.classList.contains('is-open'));
+        });
+
+        supportedFilesHelp.addEventListener('mouseenter', () => setSupportedFilesOpen(true));
+        supportedFilesHelp.addEventListener('mouseleave', () => setSupportedFilesOpen(false));
+        supportedFilesHelp.addEventListener('focusin', () => setSupportedFilesOpen(true));
+        supportedFilesHelp.addEventListener('focusout', () => setSupportedFilesOpen(false));
+
+        document.addEventListener('click', (event) => {
+          if (!supportedFilesHelp.contains(event.target as Node)) {
+            setSupportedFilesOpen(false);
+          }
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            setSupportedFilesOpen(false);
+          }
+        });
+
         function openUploadModal() {
           uploadModal.style.display = 'flex';
           selectedFiles = [];
           fileInput.value = '';
           selectedFilesDiv.innerHTML = '';
-          document.getElementById('upload-progress')!.style.display = 'none';
+          resetUploadProgress();
         }
 
         document.getElementById('btn-upload-more')!.addEventListener('click', openUploadModal);
@@ -304,14 +369,31 @@ const { id } = Astro.params;
           e.preventDefault();
           dropZone.classList.remove('drop-zone--active');
           if (e.dataTransfer?.files) {
-            selectedFiles = [...selectedFiles, ...Array.from(e.dataTransfer.files)];
+            const droppedFiles = Array.from(e.dataTransfer.files);
+            const unsupportedFiles = getUnsupportedFiles(droppedFiles);
+            if (unsupportedFiles.length > 0) {
+              showToast(`Unsupported file extension: ${unsupportedFiles.map((file) => file.name).join(', ')}`, 'error');
+              resetUploadProgress();
+              return;
+            }
+
+            selectedFiles = [...selectedFiles, ...droppedFiles];
             renderSelected();
           }
         });
 
         fileInput.addEventListener('change', () => {
           if (fileInput.files) {
-            selectedFiles = [...selectedFiles, ...Array.from(fileInput.files)];
+            const pickedFiles = Array.from(fileInput.files);
+            const unsupportedFiles = getUnsupportedFiles(pickedFiles);
+            if (unsupportedFiles.length > 0) {
+              showToast(`Unsupported file extension: ${unsupportedFiles.map((file) => file.name).join(', ')}`, 'error');
+              fileInput.value = ''; 
+              resetUploadProgress();
+              return;
+            }
+
+            selectedFiles = [...selectedFiles, ...pickedFiles];
             renderSelected();
           }
         });
@@ -333,8 +415,15 @@ const { id } = Astro.params;
 
         document.getElementById('upload-save')!.addEventListener('click', async () => {
           if (selectedFiles.length === 0) { showToast('Select files to upload', 'warning'); return; }
+          const unsupportedFiles = getUnsupportedFiles(selectedFiles);
+          if (unsupportedFiles.length > 0) {
+            showToast(`Unsupported file extension: ${unsupportedFiles.map((file) => file.name).join(', ')}`, 'error');
+            resetUploadProgress();
+            return;
+          }
+
           const total = selectedFiles.reduce((a, f) => a + f.size, 0);
-          if (total > 25 * 1024 * 1024) { showToast('Total size exceeds 25 MB', 'error'); return; }
+          if (total > 25 * 1024 * 1024) { showToast('Total size exceeds 25 MB', 'error'); resetUploadProgress(); return; }
 
           const btn = document.getElementById('upload-save') as HTMLButtonElement;
           btn.disabled = true;
@@ -352,6 +441,7 @@ const { id } = Astro.params;
             uploadModal.style.display = 'none';
             await loadFiles();
           } catch (err: any) {
+            resetUploadProgress();
             showToast(err.message, 'error');
           } finally {
             btn.disabled = false;
@@ -492,6 +582,82 @@ const { id } = Astro.params;
         background: var(--color-primary);
         border-radius: var(--radius-pill);
         transition: width 0.3s ease;
+      }
+
+      .upload-help-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .supported-files-help {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .supported-files-info {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        border: 1px solid var(--color-divider);
+        background: var(--color-canvas);
+        color: var(--color-muted);
+        font-size: 12px;
+        line-height: 1;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 150ms ease;
+      }
+
+      .supported-files-info:hover,
+      .supported-files-info:focus-visible,
+      .supported-files-help.is-open .supported-files-info {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: #fff;
+        outline: none;
+      }
+
+      .supported-files-popover {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        z-index: 30;
+        width: min(360px, 70vw);
+        background: var(--color-canvas);
+        border: 1px solid var(--color-divider);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+        padding: 12px 14px;
+        display: none;
+      }
+
+      .supported-files-help:hover .supported-files-popover,
+      .supported-files-help:focus-within .supported-files-popover,
+      .supported-files-help.is-open .supported-files-popover {
+        display: block;
+      }
+
+      .supported-files-popover__title {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--color-text);
+        margin-bottom: 8px;
+      }
+
+      .supported-files-popover__body {
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--color-muted);
+        word-break: break-word;
       }
 
       .btn--sm {

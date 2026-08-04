@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { getDb } from '../db/index.js';
+import { getDatabase } from '../db/runtime.js';
 
 interface SearchQuery {
   q?: string;
@@ -13,7 +13,7 @@ interface SearchQuery {
 
 export async function searchRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get<{ Querystring: SearchQuery }>('/api/search', async (request) => {
-    const db = getDb();
+    const db = getDatabase();
     const { q, sort, session_id, subject_id, extension, date_from, date_to } = request.query;
 
     const conditions: string[] = ['f.user_id = ?'];
@@ -77,7 +77,7 @@ export async function searchRoutes(fastify: FastifyInstance): Promise<void> {
 
     const whereClause = conditions.join(' AND ');
 
-    const results = db.prepare(`
+    const results = await db.all(`
       SELECT 
         f.id, f.filename, f.extension, f.size_bytes, f.created_at,
         w.id as work_id, w.title as work_title,
@@ -90,7 +90,7 @@ export async function searchRoutes(fastify: FastifyInstance): Promise<void> {
       WHERE ${whereClause}
       ORDER BY ${orderBy}
       LIMIT 100
-    `).all(...params);
+    `, params);
 
     // Also search for matching works (even without files)
     const workConditions: string[] = ['w.user_id = ?'];
@@ -114,7 +114,7 @@ export async function searchRoutes(fastify: FastifyInstance): Promise<void> {
 
     const workWhereClause = workConditions.join(' AND ');
 
-    const workResults = db.prepare(`
+    const workResults = await db.all(`
       SELECT 
         w.id, w.title, w.created_at, w.updated_at,
         sub.id as subject_id, sub.name as subject_name,
@@ -126,26 +126,26 @@ export async function searchRoutes(fastify: FastifyInstance): Promise<void> {
       WHERE ${workWhereClause}
       ORDER BY w.updated_at DESC
       LIMIT 50
-    `).all(...workParams);
+    `, workParams);
 
     return { files: results, works: workResults };
   });
 
   // Get available filter options for the user
   fastify.get('/api/search/filters', async (request) => {
-    const db = getDb();
+    const db = getDatabase();
 
-    const sessions = db.prepare(
+    const sessions = await db.all(
       'SELECT id, name FROM academic_sessions WHERE user_id = ? ORDER BY name'
-    ).all(request.userId);
+    , [request.userId]);
 
-    const subjects = db.prepare(
+    const subjects = await db.all(
       'SELECT id, name, session_id FROM subjects WHERE user_id = ? ORDER BY name'
-    ).all(request.userId);
+    , [request.userId]);
 
-    const extensions = db.prepare(`
+    const extensions = await db.all(`
       SELECT DISTINCT extension FROM files WHERE user_id = ? ORDER BY extension
-    `).all(request.userId) as any[];
+    `, [request.userId]) as any[];
 
     return {
       sessions,

@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
-import { initDb, closeDb } from './db/index.js';
+import { closeDatabase, getDatabaseDriver, initDatabase } from './db/runtime.js';
 import { clerkAuth } from './auth/clerk.js';
 import { MockS3Adapter } from './storage/mock-s3.js';
 import { userRoutes } from './routes/user.js';
@@ -19,8 +19,8 @@ const HOST = process.env.API_HOST || '0.0.0.0';
 
 async function start() {
   // Initialize database
-  const db = initDb();
-  console.log('[server] Database initialized');
+  await initDatabase();
+  console.log(`[server] Database initialized (${getDatabaseDriver() ?? 'unknown'})`);
 
   // Initialize storage adapter (mock S3 for development)
   const storage = new MockS3Adapter();
@@ -88,7 +88,7 @@ async function start() {
   const shutdown = async () => {
     console.log('[server] Shutting down...');
     await fastify.close();
-    closeDb();
+    await closeDatabase();
     process.exit(0);
   };
 

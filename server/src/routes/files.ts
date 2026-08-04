@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { getDb } from '../db/index.js';
+import { getDatabase } from '../db/runtime.js';
 import type { StorageAdapter } from '../storage/adapter.js';
 import { buildStorageKey } from '../storage/adapter.js';
 
@@ -79,16 +79,16 @@ export function createFileRoutes(storage: StorageAdapter) {
     fastify.post<{ Params: { workId: string } }>(
       '/api/works/:workId/files',
       async (request, reply) => {
-        const db = getDb();
+        const db = getDatabase();
 
         // Verify work ownership and get path info
-        const work = db.prepare(`
+        const work = await db.get(`
           SELECT w.*, sub.name as subject_name, s.name as session_name
           FROM works w
           JOIN subjects sub ON w.subject_id = sub.id
           JOIN academic_sessions s ON sub.session_id = s.id
           WHERE w.id = ? AND w.user_id = ?
-        `).get(request.params.workId, request.userId) as any;
+        `, [request.params.workId, request.userId]) as any;
 
         if (!work) {
           return reply.status(404).send({ error: 'Work not found' });
@@ -140,16 +140,15 @@ export function createFileRoutes(storage: StorageAdapter) {
           await storage.upload(storageKey, data, contentType);
 
           // Store metadata in DB
-          const result = db.prepare(`
+          const file = await db.get(`
             INSERT INTO files (work_id, user_id, filename, sanitized_filename, extension, size_bytes, storage_key, content_type)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
+            RETURNING *
+          `, [
             request.params.workId, request.userId,
             filename, sanitized, ext, data.length,
             storageKey, contentType
-          );
-
-          const file = db.prepare('SELECT * FROM files WHERE id = ?').get(result.lastInsertRowid);
+          ]);
           uploadedFiles.push(file);
         }
 
@@ -158,7 +157,7 @@ export function createFileRoutes(storage: StorageAdapter) {
         }
 
         // Update work timestamp
-        db.prepare("UPDATE works SET updated_at = datetime('now') WHERE id = ?").run(request.params.workId);
+        await db.run("UPDATE works SET updated_at = datetime('now') WHERE id = ?", [request.params.workId]);
 
         return reply.status(201).send({ files: uploadedFiles, count: uploadedFiles.length });
       }
@@ -168,19 +167,19 @@ export function createFileRoutes(storage: StorageAdapter) {
     fastify.get<{ Params: { workId: string } }>(
       '/api/works/:workId/files',
       async (request, reply) => {
-        const db = getDb();
+        const db = getDatabase();
 
-        const work = db.prepare(
+        const work = await db.get(
           'SELECT id FROM works WHERE id = ? AND user_id = ?'
-        ).get(request.params.workId, request.userId);
+        , [request.params.workId, request.userId]);
 
         if (!work) {
           return reply.status(404).send({ error: 'Work not found' });
         }
 
-        const files = db.prepare(
+        const files = await db.all(
           'SELECT * FROM files WHERE work_id = ? ORDER BY created_at DESC'
-        ).all(request.params.workId);
+        , [request.params.workId]);
 
         return { files };
       }
@@ -188,10 +187,10 @@ export function createFileRoutes(storage: StorageAdapter) {
 
     // Download a single file
     fastify.get<{ Params: { id: string } }>('/api/files/:id', async (request, reply) => {
-      const db = getDb();
-      const file = db.prepare(
+      const db = getDatabase();
+      const file = await db.get(
         'SELECT * FROM files WHERE id = ? AND user_id = ?'
-      ).get(request.params.id, request.userId) as any;
+      , [request.params.id, request.userId]) as any;
 
       if (!file) {
         return reply.status(404).send({ error: 'File not found' });
@@ -208,10 +207,10 @@ export function createFileRoutes(storage: StorageAdapter) {
 
     // Preview a file (text-based only)
     fastify.get<{ Params: { id: string } }>('/api/files/:id/preview', async (request, reply) => {
-      const db = getDb();
-      const file = db.prepare(
+      const db = getDatabase();
+      const file = await db.get(
         'SELECT * FROM files WHERE id = ? AND user_id = ?'
-      ).get(request.params.id, request.userId) as any;
+      , [request.params.id, request.userId]) as any;
 
       if (!file) {
         return reply.status(404).send({ error: 'File not found' });
@@ -241,10 +240,10 @@ export function createFileRoutes(storage: StorageAdapter) {
 
     // Delete a single file (soft delete)
     fastify.delete<{ Params: { id: string } }>('/api/files/:id', async (request, reply) => {
-      const db = getDb();
-      const file = db.prepare(
+      const db = getDatabase();
+      const file = await db.get(
         'SELECT * FROM files WHERE id = ? AND user_id = ?'
-      ).get(request.params.id, request.userId) as any;
+      , [request.params.id, request.userId]) as any;
 
       if (!file) {
         return reply.status(404).send({ error: 'File not found' });
@@ -252,16 +251,16 @@ export function createFileRoutes(storage: StorageAdapter) {
 
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const deleteTransaction = db.transaction(() => {
-        db.prepare(`
+      const deleteTransaction = async () => {
+        await db.run(`
           INSERT INTO recycle_bin (user_id, item_type, item_id, original_data, expires_at)
           VALUES (?, 'file', ?, ?, ?)
-        `).run(request.userId, file.id, JSON.stringify({ file }), expiresAt);
+        `, [request.userId, file.id, JSON.stringify({ file }), expiresAt]);
 
-        db.prepare('DELETE FROM files WHERE id = ?').run(file.id);
-      });
+        await db.run('DELETE FROM files WHERE id = ?', [file.id]);
+      };
 
-      deleteTransaction();
+      await db.transaction(deleteTransaction);
       return { success: true, message: 'File moved to recycle bin' };
     });
   };

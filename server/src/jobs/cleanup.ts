@@ -1,4 +1,4 @@
-import { getDb } from '../db/index.js';
+import { getDatabase } from '../db/runtime.js';
 import type { StorageAdapter } from '../storage/adapter.js';
 
 /**
@@ -17,13 +17,13 @@ export function startCleanupJob(storage: StorageAdapter): void {
 }
 
 async function runCleanup(storage: StorageAdapter): Promise<void> {
-  const db = getDb();
+  const db = getDatabase();
   const now = new Date().toISOString();
 
   // 1. Clean expired recycle bin items
-  const expiredItems = db.prepare(
+  const expiredItems = await db.all(
     "SELECT * FROM recycle_bin WHERE expires_at <= ?"
-  ).all(now) as any[];
+  , [now]) as any[];
 
   for (const item of expiredItems) {
     let data;
@@ -43,7 +43,7 @@ async function runCleanup(storage: StorageAdapter): Promise<void> {
       }
     }
 
-    db.prepare('DELETE FROM recycle_bin WHERE id = ?').run(item.id);
+    await db.run('DELETE FROM recycle_bin WHERE id = ?', [item.id]);
   }
 
   if (expiredItems.length > 0) {
@@ -51,40 +51,40 @@ async function runCleanup(storage: StorageAdapter): Promise<void> {
   }
 
   // 2. Auto-delete sessions past their auto_delete_date
-  const expiredSessions = db.prepare(`
+  const expiredSessions = await db.all(`
     SELECT * FROM academic_sessions 
     WHERE auto_delete = 1 AND auto_delete_date IS NOT NULL AND auto_delete_date <= ?
-  `).all(now.split('T')[0]) as any[];
+  `, [now.split('T')[0]]) as any[];
 
   for (const session of expiredSessions) {
-    const subjects = db.prepare('SELECT * FROM subjects WHERE session_id = ?').all(session.id) as any[];
+    const subjects = await db.all('SELECT * FROM subjects WHERE session_id = ?', [session.id]) as any[];
     const subjectIds = subjects.map((s: any) => s.id);
 
     let works: any[] = [];
     let files: any[] = [];
     if (subjectIds.length > 0) {
       const placeholders = subjectIds.map(() => '?').join(',');
-      works = db.prepare(`SELECT * FROM works WHERE subject_id IN (${placeholders})`).all(...subjectIds) as any[];
+      works = await db.all(`SELECT * FROM works WHERE subject_id IN (${placeholders})`, subjectIds) as any[];
       const workIds = works.map((w: any) => w.id);
       if (workIds.length > 0) {
         const wPlaceholders = workIds.map(() => '?').join(',');
-        files = db.prepare(`SELECT * FROM files WHERE work_id IN (${wPlaceholders})`).all(...workIds) as any[];
+        files = await db.all(`SELECT * FROM files WHERE work_id IN (${wPlaceholders})`, workIds) as any[];
       }
     }
 
     // Move to recycle bin with 7-day retention
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const deleteTransaction = db.transaction(() => {
-      db.prepare(`
+    const deleteTransaction = async () => {
+      await db.run(`
         INSERT INTO recycle_bin (user_id, item_type, item_id, original_data, expires_at)
         VALUES (?, 'session', ?, ?, ?)
-      `).run(session.user_id, session.id, JSON.stringify({ session, subjects, works, files }), expiresAt);
+      `, [session.user_id, session.id, JSON.stringify({ session, subjects, works, files }), expiresAt]);
 
-      db.prepare('DELETE FROM academic_sessions WHERE id = ?').run(session.id);
-    });
+      await db.run('DELETE FROM academic_sessions WHERE id = ?', [session.id]);
+    };
 
-    deleteTransaction();
+    await db.transaction(deleteTransaction);
     console.log(`[cleanup] Auto-deleted session "${session.name}" for user ${session.user_id}`);
   }
 }

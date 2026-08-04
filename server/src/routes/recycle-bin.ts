@@ -1,17 +1,17 @@
 import type { FastifyInstance } from 'fastify';
-import { getDb } from '../db/index.js';
+import { getDatabase } from '../db/runtime.js';
 import type { StorageAdapter } from '../storage/adapter.js';
 
 export function createRecycleBinRoutes(storage: StorageAdapter) {
   return async function recycleBinRoutes(fastify: FastifyInstance): Promise<void> {
     // List recycle bin items
     fastify.get('/api/recycle-bin', async (request) => {
-      const db = getDb();
-      const items = db.prepare(`
+      const db = getDatabase();
+      const items = await db.all(`
         SELECT * FROM recycle_bin 
         WHERE user_id = ? 
         ORDER BY deleted_at DESC
-      `).all(request.userId) as any[];
+      `, [request.userId]) as any[];
 
       const now = Date.now();
       const enriched = items.map((item: any) => {
@@ -51,10 +51,10 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
     fastify.post<{ Params: { id: string } }>(
       '/api/recycle-bin/:id/restore',
       async (request, reply) => {
-        const db = getDb();
-        const item = db.prepare(
+        const db = getDatabase();
+        const item = await db.get(
           'SELECT * FROM recycle_bin WHERE id = ? AND user_id = ?'
-        ).get(request.params.id, request.userId) as any;
+        , [request.params.id, request.userId]) as any;
 
         if (!item) {
           return reply.status(404).send({ error: 'Recycle bin item not found' });
@@ -67,27 +67,27 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
           return reply.status(500).send({ error: 'Could not parse item data' });
         }
 
-        const restoreTransaction = db.transaction(() => {
+        const restoreTransaction = async () => {
           switch (item.item_type) {
             case 'session':
-              restoreSession(db, data);
+              await restoreSession(db, data);
               break;
             case 'subject':
-              restoreSubject(db, data);
+              await restoreSubject(db, data);
               break;
             case 'work':
-              restoreWork(db, data);
+              await restoreWork(db, data);
               break;
             case 'file':
-              restoreFile(db, data);
+              await restoreFile(db, data);
               break;
           }
 
           // Remove from recycle bin
-          db.prepare('DELETE FROM recycle_bin WHERE id = ?').run(item.id);
-        });
+          await db.run('DELETE FROM recycle_bin WHERE id = ?', [item.id]);
+        };
 
-        restoreTransaction();
+        await db.transaction(restoreTransaction);
         return { success: true, message: `${item.item_type} restored successfully` };
       }
     );
@@ -96,10 +96,10 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
     fastify.delete<{ Params: { id: string } }>(
       '/api/recycle-bin/:id',
       async (request, reply) => {
-        const db = getDb();
-        const item = db.prepare(
+        const db = getDatabase();
+        const item = await db.get(
           'SELECT * FROM recycle_bin WHERE id = ? AND user_id = ?'
-        ).get(request.params.id, request.userId) as any;
+        , [request.params.id, request.userId]) as any;
 
         if (!item) {
           return reply.status(404).send({ error: 'Recycle bin item not found' });
@@ -122,117 +122,117 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
           }
         }
 
-        db.prepare('DELETE FROM recycle_bin WHERE id = ?').run(item.id);
+        await db.run('DELETE FROM recycle_bin WHERE id = ?', [item.id]);
         return { success: true, message: 'Permanently deleted' };
       }
     );
   };
 }
 
-function restoreSession(db: any, data: any): void {
+async function restoreSession(db: any, data: any): Promise<void> {
   const { session, subjects, works, files } = data;
 
-  db.prepare(`
+  await db.run(`
     INSERT INTO academic_sessions (id, user_id, name, auto_delete, auto_delete_date, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-  `).run(session.id, session.user_id, session.name, session.auto_delete, session.auto_delete_date, session.created_at);
+  `, [session.id, session.user_id, session.name, session.auto_delete, session.auto_delete_date, session.created_at]);
 
   if (subjects) {
     for (const sub of subjects) {
-      db.prepare(`
+      await db.run(`
         INSERT INTO subjects (id, session_id, user_id, name, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `).run(sub.id, sub.session_id, sub.user_id, sub.name, sub.created_at);
+      `, [sub.id, sub.session_id, sub.user_id, sub.name, sub.created_at]);
     }
   }
 
   if (works) {
     for (const work of works) {
-      db.prepare(`
+      await db.run(`
         INSERT INTO works (id, subject_id, user_id, title, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `).run(work.id, work.subject_id, work.user_id, work.title, work.created_at);
+      `, [work.id, work.subject_id, work.user_id, work.title, work.created_at]);
     }
   }
 
   if (files) {
     for (const file of files) {
-      db.prepare(`
+      await db.run(`
         INSERT INTO files (id, work_id, user_id, filename, sanitized_filename, extension, size_bytes, storage_key, content_type, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(file.id, file.work_id, file.user_id, file.filename, file.sanitized_filename, file.extension, file.size_bytes, file.storage_key, file.content_type, file.created_at);
+      `, [file.id, file.work_id, file.user_id, file.filename, file.sanitized_filename, file.extension, file.size_bytes, file.storage_key, file.content_type, file.created_at]);
     }
   }
 }
 
-function restoreSubject(db: any, data: any): void {
+async function restoreSubject(db: any, data: any): Promise<void> {
   const { subject, works, files } = data;
 
   // Verify parent session still exists
-  const session = db.prepare('SELECT id FROM academic_sessions WHERE id = ?').get(subject.session_id);
+  const session = await db.get('SELECT id FROM academic_sessions WHERE id = ?', [subject.session_id]);
   if (!session) {
     throw new Error('Parent session no longer exists. Cannot restore.');
   }
 
-  db.prepare(`
+  await db.run(`
     INSERT INTO subjects (id, session_id, user_id, name, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `).run(subject.id, subject.session_id, subject.user_id, subject.name, subject.created_at);
+  `, [subject.id, subject.session_id, subject.user_id, subject.name, subject.created_at]);
 
   if (works) {
     for (const work of works) {
-      db.prepare(`
+      await db.run(`
         INSERT INTO works (id, subject_id, user_id, title, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `).run(work.id, work.subject_id, work.user_id, work.title, work.created_at);
+      `, [work.id, work.subject_id, work.user_id, work.title, work.created_at]);
     }
   }
 
   if (files) {
     for (const file of files) {
-      db.prepare(`
+      await db.run(`
         INSERT INTO files (id, work_id, user_id, filename, sanitized_filename, extension, size_bytes, storage_key, content_type, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(file.id, file.work_id, file.user_id, file.filename, file.sanitized_filename, file.extension, file.size_bytes, file.storage_key, file.content_type, file.created_at);
+      `, [file.id, file.work_id, file.user_id, file.filename, file.sanitized_filename, file.extension, file.size_bytes, file.storage_key, file.content_type, file.created_at]);
     }
   }
 }
 
-function restoreWork(db: any, data: any): void {
+async function restoreWork(db: any, data: any): Promise<void> {
   const { work, files } = data;
 
-  const subject = db.prepare('SELECT id FROM subjects WHERE id = ?').get(work.subject_id);
+  const subject = await db.get('SELECT id FROM subjects WHERE id = ?', [work.subject_id]);
   if (!subject) {
     throw new Error('Parent subject no longer exists. Cannot restore.');
   }
 
-  db.prepare(`
+  await db.run(`
     INSERT INTO works (id, subject_id, user_id, title, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `).run(work.id, work.subject_id, work.user_id, work.title, work.created_at);
+  `, [work.id, work.subject_id, work.user_id, work.title, work.created_at]);
 
   if (files) {
     for (const file of files) {
-      db.prepare(`
+      await db.run(`
         INSERT INTO files (id, work_id, user_id, filename, sanitized_filename, extension, size_bytes, storage_key, content_type, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(file.id, file.work_id, file.user_id, file.filename, file.sanitized_filename, file.extension, file.size_bytes, file.storage_key, file.content_type, file.created_at);
+      `, [file.id, file.work_id, file.user_id, file.filename, file.sanitized_filename, file.extension, file.size_bytes, file.storage_key, file.content_type, file.created_at]);
     }
   }
 }
 
-function restoreFile(db: any, data: any): void {
+async function restoreFile(db: any, data: any): Promise<void> {
   const { file } = data;
 
-  const work = db.prepare('SELECT id FROM works WHERE id = ?').get(file.work_id);
+  const work = await db.get('SELECT id FROM works WHERE id = ?', [file.work_id]);
   if (!work) {
     throw new Error('Parent work no longer exists. Cannot restore.');
   }
 
-  db.prepare(`
+  await db.run(`
     INSERT INTO files (id, work_id, user_id, filename, sanitized_filename, extension, size_bytes, storage_key, content_type, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(file.id, file.work_id, file.user_id, file.filename, file.sanitized_filename, file.extension, file.size_bytes, file.storage_key, file.content_type, file.created_at);
+  `, [file.id, file.work_id, file.user_id, file.filename, file.sanitized_filename, file.extension, file.size_bytes, file.storage_key, file.content_type, file.created_at]);
 }
 
 function extractFiles(itemType: string, data: any): any[] {
