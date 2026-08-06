@@ -167,6 +167,7 @@ async function ensurePostgresSchema(client: DatabaseClient): Promise<void> {
       clerk_id TEXT NOT NULL UNIQUE,
       onboarding_completed INTEGER NOT NULL DEFAULT 0,
       uploads_suspended INTEGER NOT NULL DEFAULT 0,
+      suspension_reason TEXT,
       created_at TEXT NOT NULL DEFAULT now_iso(),
       updated_at TEXT NOT NULL DEFAULT now_iso()
     );
@@ -293,6 +294,11 @@ async function ensurePostgresSchema(client: DatabaseClient): Promise<void> {
   // Migrations for existing databases
   try {
     await client.exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS uploads_suspended INTEGER NOT NULL DEFAULT 0`);
+  } catch {
+    // Column already exists or other non-critical error
+  }
+  try {
+    await client.exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_reason TEXT`);
   } catch {
     // Column already exists or other non-critical error
   }

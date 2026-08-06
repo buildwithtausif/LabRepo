@@ -13,23 +13,31 @@ import Layout from '../Layouts/Layout.astro';
 
       <section class="security-grid" aria-label="Moderation details">
         <article class="security-item">
+          <h2 class="security-item__title">Upload Limits &amp; Bursts</h2>
+          <p class="security-item__copy">To ensure fair usage, we enforce two distinct upload constraints:</p>
+          <ul class="security-item__list">
+            <li><strong>Rate Limit (20/min):</strong> A standard API rate limit that blocks the 21st upload attempt within a single minute. This simply returns a "Too Many Requests" error to pace your uploads.</li>
+            <li><strong>Abuse Flag (50/min):</strong> An automated moderation rule that triggers if you successfully upload 50 files within 60 seconds. This is considered an <strong>Upload Burst</strong> and indicates potential spam. Hitting this limit flags your account for admin review.</li>
+          </ul>
+        </article>
+
+        <article class="security-item">
+          <h2 class="security-item__title">Account Suspensions</h2>
+          <p class="security-item__copy">Accounts flagged for abusive behavior (such as extreme upload bursts or repeated login attacks) may have their upload privileges suspended by an administrator.</p>
+          <ul class="security-item__list">
+            <li><strong>If Suspended:</strong> You will retain read-only access to view and download your existing files, but you cannot upload new files. A reason for the suspension will be displayed on your dashboard.</li>
+            <li><strong>Appeals:</strong> If you believe your suspension was a mistake, you can contact support with your User ID to request a manual review and restoration of privileges.</li>
+          </ul>
+        </article>
+
+        <article class="security-item">
           <h2 class="security-item__title">Why we log activity</h2>
-          <p class="security-item__copy">We record key events such as logins, uploads, downloads, and admin actions so we can investigate issues and maintain a secure history.</p>
-        </article>
-
-        <article class="security-item">
-          <h2 class="security-item__title">What information we collect</h2>
-          <p class="security-item__copy">We store metadata such as file names, size, upload time, uploader identity, and basic request details. We do not inspect file contents for moderation.</p>
-        </article>
-
-        <article class="security-item">
-          <h2 class="security-item__title">Abuse prevention</h2>
-          <p class="security-item__copy">We use rate limits, suspicious-activity detection, and admin review tools to reduce spam, storage abuse, and repeated failed login attempts.</p>
+          <p class="security-item__copy">We record key events such as logins, uploads, downloads, and admin actions so we can investigate issues, identify malicious actors, and maintain a secure history.</p>
         </article>
 
         <article class="security-item">
           <h2 class="security-item__title">Your privacy</h2>
-          <p class="security-item__copy">Private security data is stored server-side and is not sold or used for advertising. We only use it to protect the service and investigate abuse.</p>
+          <p class="security-item__copy">Private security data and metadata (like file size and names) are stored server-side and never sold. We do not inspect the contents of your academic files.</p>
         </article>
       </section>
     </div>
@@ -110,6 +118,21 @@ import Layout from '../Layouts/Layout.astro';
     color: var(--color-ink-muted);
     line-height: 1.7;
     font-size: clamp(1rem, 1.2vw, 1.18rem);
+  }
+
+  .security-item__list {
+    margin-top: 12px;
+    padding-left: 20px;
+    color: var(--color-ink-muted);
+    line-height: 1.6;
+    font-size: clamp(0.95rem, 1.15vw, 1.1rem);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .security-item__list li::marker {
+    color: var(--color-primary);
   }
 
   @media (max-width: 767px) {

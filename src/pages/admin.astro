@@ -157,7 +157,7 @@ import { Show } from '@clerk/astro/components';
                   <span class="admin-badge admin-badge--danger">HIGH</span>
                   <div>
                     <strong>Upload burst</strong>
-                    <p>Triggered when a user uploads <strong>≥ 20 files within 1 hour</strong>. Indicates potential spam or storage abuse.</p>
+                    <p>Triggered when a user uploads <strong>≥ 50 files within 1 minute</strong>. Indicates potential spam or storage abuse.</p>
                   </div>
                 </div>
                 <div class="admin-learn-rule">
@@ -458,9 +458,11 @@ import { Show } from '@clerk/astro/components';
             container.querySelectorAll(".btn-user-suspend").forEach((btn: any) => {
               btn.addEventListener("click", async () => {
                 const uid = btn.dataset.uid;
-                if (!confirm(`Suspend uploads for user ${uid.slice(0, 16)}…?`)) return;
+                const reason = prompt(`Suspend uploads for user ${uid.slice(0, 16)}…?\n\nPlease enter a reason (this will be shown to the user):`);
+                if (reason === null) return; // User cancelled
+                
                 try {
-                  await api.suspendUserUploads(uid, "Uploads suspended from admin panel");
+                  await api.suspendUserUploads(uid, reason || "Violation of terms of service.");
                   showToast("User uploads suspended", "warning");
                   await loadUsers();
                   await loadOverview();

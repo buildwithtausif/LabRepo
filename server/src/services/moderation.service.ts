@@ -15,15 +15,16 @@ export async function evaluateAbuseSignals(input: {
 }): Promise<AbuseRuleResult> {
   const db = getDatabase();
   const now = new Date();
-  const windowStart = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const windowStartUpload = new Date(now.getTime() - 60 * 1000).toISOString(); // 1 minute
+  const windowStartLogin = new Date(now.getTime() - 60 * 60 * 1000).toISOString(); // 1 hour
 
   if (input.action === 'upload') {
     const recentUploads = await db.get(
       'SELECT COUNT(*) as count FROM audit_logs WHERE user_id = ? AND action = ? AND created_at >= ?',
-      [input.userId, 'file_uploaded', windowStart]
+      [input.userId, 'file_uploaded', windowStartUpload]
     ) as any;
 
-    if (Number(recentUploads?.count ?? 0) >= 20) {
+    if (Number(recentUploads?.count ?? 0) >= 50) {
       await createAbuseFlag(input.userId, 'UPLOAD_SPAM', 'high', 'Upload burst detected', input.ipAddress, input.userAgent);
       return { flagged: true, reason: 'Upload burst detected', severity: 'high' };
     }
@@ -32,7 +33,7 @@ export async function evaluateAbuseSignals(input: {
   if (input.action === 'login') {
     const recentFailures = await db.get(
       'SELECT COUNT(*) as count FROM audit_logs WHERE user_id = ? AND action = ? AND created_at >= ?',
-      [input.userId, 'failed_login', windowStart]
+      [input.userId, 'failed_login', windowStartLogin]
     ) as any;
 
     if (Number(recentFailures?.count ?? 0) >= 5) {
@@ -57,6 +58,15 @@ async function createAbuseFlag(
     INSERT INTO abuse_flags (user_id, type, severity, reason, resolved, notes)
     VALUES (?, ?, ?, ?, 0, ?)
   `, [userId, type, severity, reason, JSON.stringify({ ipAddress, userAgent })]);
+
+  if (severity === 'high') {
+    // Automatically freeze the user's account pending admin review
+    const autoReason = 'System detected unusual activity. Your account has been temporarily restricted pending moderation review.';
+    await db.run(
+      "UPDATE users SET uploads_suspended = 1, suspension_reason = ?, updated_at = datetime('now') WHERE clerk_id = ?",
+      [autoReason, userId]
+    );
+  }
 
   await writeAuditLog({
     userId,

@@ -7,6 +7,7 @@ import { writeAuditLog } from '../services/audit.service.js';
 import { updateUserUsage } from '../services/usage.service.js';
 import { evaluateAbuseSignals } from '../services/moderation.service.js';
 import { getSecurityConfig } from '../services/config.service.js';
+import { rateLimiter } from '../services/rate-limit.service.js';
 
 const securityConfig = getSecurityConfig();
 const ALLOWED_EXTENSIONS = new Set(securityConfig.allowedExtensions);
@@ -79,6 +80,12 @@ export function createFileRoutes(storage: StorageAdapter) {
 
         if (!work) {
           return reply.status(404).send({ error: 'Work not found' });
+        }
+
+        // Apply rate limit for uploads
+        const rateResult = rateLimiter.check(`upload:${request.userId}`, { limit: securityConfig.uploadRateLimit, windowMs: 60 * 1000 });
+        if (!rateResult.allowed) {
+          return reply.status(429).send({ error: 'Too many uploads per minute. Please slow down.' });
         }
 
         // Check if uploads are suspended for this user

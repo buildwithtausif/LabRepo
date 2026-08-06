@@ -29,6 +29,19 @@ import { Show } from "@clerk/astro/components";
             <a class="dashboard-sidebar__link" href="/recycle-bin"><i class="bi bi-trash3"></i> Recycle Bin</a>
           </aside>
           <div class="dashboard-main">
+            <!-- Suspension Banner -->
+            <div id="suspension-banner" class="store-utility-card" style="display: none; background: rgba(255, 102, 102, 0.1); border-color: rgba(255, 102, 102, 0.3); margin-bottom: var(--space-6);">
+              <div class="flex items-start gap-4">
+                <div class="text-hero" style="color: var(--color-danger); font-size: 1.5rem;"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                <div>
+                  <h3 class="text-body-strong" style="color: var(--color-danger); margin-bottom: 4px;">Account suspended</h3>
+                  <p class="text-caption text-muted" style="margin-bottom: 8px;">Your ability to upload files has been suspended by an administrator.</p>
+                  <p class="text-caption" style="margin-bottom: 12px; font-weight: 500;">Reason: <span id="suspension-reason-text">No reason provided.</span></p>
+                  <p class="text-caption text-muted">If you believe this is an error, please contact support at <a href="mailto:support@labrepo.edu" class="text-link">support@labrepo.edu</a> with your user ID: <code id="suspension-user-id" style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;"></code>.</p>
+                </div>
+              </div>
+            </div>
+
             <!-- Page header -->
             <div class="page-header flex items-center justify-between">
               <div>
@@ -167,6 +180,18 @@ import { Show } from "@clerk/astro/components";
           }
         } catch (e) {
           console.error("Failed to check onboarding status:", e);
+        }
+
+        // Check suspension status
+        try {
+          const status = await api.getUserStatus();
+          if (status.uploads_suspended) {
+            document.getElementById("suspension-banner")!.style.display = "block";
+            document.getElementById("suspension-reason-text")!.textContent = status.suspension_reason || "Violation of terms of service.";
+            document.getElementById("suspension-user-id")!.textContent = (window as any).Clerk?.user?.id || "unknown";
+          }
+        } catch (e) {
+          console.error("Failed to fetch suspension status:", e);
         }
 
         // Load sessions

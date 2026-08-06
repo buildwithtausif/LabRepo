@@ -7,6 +7,7 @@ export function initializeSchema(db: Database.Database): void {
       clerk_id TEXT NOT NULL UNIQUE,
       onboarding_completed INTEGER NOT NULL DEFAULT 0,
       uploads_suspended INTEGER NOT NULL DEFAULT 0,
+      suspension_reason TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -137,6 +138,11 @@ export function initializeSchema(db: Database.Database): void {
   // Migrations for existing databases
   try {
     db.exec(`ALTER TABLE users ADD COLUMN uploads_suspended INTEGER NOT NULL DEFAULT 0`);
+  } catch {
+    // Column already exists — ignore
+  }
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN suspension_reason TEXT`);
   } catch {
     // Column already exists — ignore
   }

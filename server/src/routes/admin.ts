@@ -114,8 +114,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     const userId = request.params.userId;
     const notes = (request.body as any)?.notes ?? 'Uploads suspended by admin';
 
-    // Actually set the suspended flag
-    await db.run("UPDATE users SET uploads_suspended = 1, updated_at = datetime('now') WHERE clerk_id = ?", [userId]);
+    // Actually set the suspended flag and reason
+    await db.run("UPDATE users SET uploads_suspended = 1, suspension_reason = ?, updated_at = datetime('now') WHERE clerk_id = ?", [notes, userId]);
 
     await writeAuditLog({
       userId: request.userId,
@@ -136,8 +136,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     const userId = request.params.userId;
     const notes = (request.body as any)?.notes ?? 'Account restored by admin';
 
-    // Clear the suspended flag
-    await db.run("UPDATE users SET uploads_suspended = 0, updated_at = datetime('now') WHERE clerk_id = ?", [userId]);
+    // Clear the suspended flag and reason
+    await db.run("UPDATE users SET uploads_suspended = 0, suspension_reason = NULL, updated_at = datetime('now') WHERE clerk_id = ?", [userId]);
 
     await writeAuditLog({
       userId: request.userId,
