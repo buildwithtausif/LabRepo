@@ -12,10 +12,13 @@ import { createFileRoutes } from './routes/files.js';
 import { createDownloadRoutes } from './routes/download.js';
 import { createRecycleBinRoutes } from './routes/recycle-bin.js';
 import { searchRoutes } from './routes/search.js';
+import { adminRoutes } from './routes/admin.js';
 import { startCleanupJob } from './jobs/cleanup.js';
+import { getSecurityConfig } from './services/config.service.js';
 
 const PORT = parseInt(process.env.API_PORT || '3001', 10);
 const HOST = process.env.API_HOST || '0.0.0.0';
+const securityConfig = getSecurityConfig();
 
 async function start() {
   // Initialize database
@@ -59,7 +62,7 @@ async function start() {
   // Register multipart support (for file uploads)
   await fastify.register(multipart, {
     limits: {
-      fileSize: 25 * 1024 * 1024, // 25 MB
+      fileSize: securityConfig.maxUploadBytes,
       files: 20, // max 20 files per request
     },
   });
@@ -79,6 +82,7 @@ async function start() {
   await fastify.register(createDownloadRoutes(storage));
   await fastify.register(createRecycleBinRoutes(storage));
   await fastify.register(searchRoutes);
+  await fastify.register(adminRoutes);
 
   // Start cleanup job
   startCleanupJob(storage);

@@ -129,6 +129,8 @@ select.input { appearance: auto; color-scheme: dark; cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .toast-container { position: fixed; right: 20px; bottom: 20px; z-index: 210; display: grid; gap: 10px; }
 .toast { display: flex; align-items: center; gap: 10px; min-width: 250px; padding: 12px 16px; background: #23242a; border: 1px solid var(--color-divider); border-radius: var(--radius-sm); box-shadow: var(--shadow-product); font-size: .9rem; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.card--subtle { background: rgba(255,255,255,.04); border: 1px solid var(--color-divider); border-radius: 14px; padding: 16px; }
 
 .flex { display: flex; }.inline-flex { display: inline-flex; }.flex-col { flex-direction: column; }.flex-wrap { flex-wrap: wrap; }.items-center { align-items: center; }.justify-between { justify-content: space-between; }.justify-center { justify-content: center; }.shrink-0 { flex-shrink: 0; }
 .grid { display: grid; }.grid-cols-1 { grid-template-columns: 1fr; }.gap-2 { gap: 8px; }.gap-4 { gap: 16px; }.gap-6 { gap: 24px; }.gap-8 { gap: 32px; }.gap-12 { gap: 48px; }

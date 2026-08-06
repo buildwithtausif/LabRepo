@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDatabase } from '../db/runtime.js';
 import type { StorageAdapter } from '../storage/adapter.js';
+import { updateUserUsage } from '../services/usage.service.js';
 
 export function createRecycleBinRoutes(storage: StorageAdapter) {
   return async function recycleBinRoutes(fastify: FastifyInstance): Promise<void> {
@@ -82,6 +83,8 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
               await restoreFile(db, data);
               break;
           }
+
+          await updateUserUsage({ userId: request.userId, timestamp: new Date().toISOString() });
 
           // Remove from recycle bin
           await db.run('DELETE FROM recycle_bin WHERE id = ?', [item.id]);

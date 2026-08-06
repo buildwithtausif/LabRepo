@@ -6,6 +6,7 @@ export function initializeSchema(db: Database.Database): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clerk_id TEXT NOT NULL UNIQUE,
       onboarding_completed INTEGER NOT NULL DEFAULT 0,
+      uploads_suspended INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -66,6 +67,56 @@ export function initializeSchema(db: Database.Database): void {
       expires_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      resource_type TEXT,
+      resource_id TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      metadata TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS user_usage_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL UNIQUE,
+      storage_used INTEGER NOT NULL DEFAULT 0,
+      repository_count INTEGER NOT NULL DEFAULT 0,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      uploads_today INTEGER NOT NULL DEFAULT 0,
+      downloads_today INTEGER NOT NULL DEFAULT 0,
+      total_uploads INTEGER NOT NULL DEFAULT 0,
+      total_downloads INTEGER NOT NULL DEFAULT 0,
+      last_upload_at TEXT,
+      last_login_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS daily_usage_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      uploads INTEGER NOT NULL DEFAULT 0,
+      downloads INTEGER NOT NULL DEFAULT 0,
+      storage_used INTEGER NOT NULL DEFAULT 0,
+      api_requests INTEGER NOT NULL DEFAULT 0,
+      login_count INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(user_id, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS abuse_flags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      resolved INTEGER NOT NULL DEFAULT 0,
+      resolved_by TEXT,
+      notes TEXT
+    );
+
     -- Indexes for performance
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON academic_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_subjects_session ON subjects(session_id);
@@ -76,5 +127,17 @@ export function initializeSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
     CREATE INDEX IF NOT EXISTS idx_recycle_user ON recycle_bin(user_id);
     CREATE INDEX IF NOT EXISTS idx_recycle_expires ON recycle_bin(expires_at);
-  `);
+    CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
+    CREATE INDEX IF NOT EXISTS idx_abuse_user ON abuse_flags(user_id);
+    CREATE INDEX IF NOT EXISTS idx_abuse_resolved ON abuse_flags(resolved);
+   `);
+
+  // Migrations for existing databases
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN uploads_suspended INTEGER NOT NULL DEFAULT 0`);
+  } catch {
+    // Column already exists — ignore
+  }
 }

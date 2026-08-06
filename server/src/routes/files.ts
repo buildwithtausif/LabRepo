@@ -2,16 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import { getDatabase } from '../db/runtime.js';
 import type { StorageAdapter } from '../storage/adapter.js';
 import { buildStorageKey } from '../storage/adapter.js';
+import { validateUploadCandidate } from '../services/validation.service.js';
+import { writeAuditLog } from '../services/audit.service.js';
+import { updateUserUsage } from '../services/usage.service.js';
+import { evaluateAbuseSignals } from '../services/moderation.service.js';
+import { getSecurityConfig } from '../services/config.service.js';
 
-// Allowed file extensions (programming / AI / data science / docs)
-const ALLOWED_EXTENSIONS = new Set([
-  'py', 'ipynb', 'js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'c', 'cpp', 'h', 'hpp', 'java', 'kt', 'cs',
-  'go', 'rs', 'swift', 'php', 'rb', 'r', 'scala', 'sql', 'html', 'css',
-  'scss', 'json', 'yaml', 'yml', 'xml', 'md', 'txt', 'csv', 'parquet',
-  'feather', 'pkl', 'joblib', 'onnx', 'pt', 'pth', 'keras', 'h5',
-  'env', 'sh', 'bat', 'ps1', 'toml', 'ini', 'cfg', 'conf', 'log', 'dockerfile',
-  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'tex'
-]);
+const securityConfig = getSecurityConfig();
+const ALLOWED_EXTENSIONS = new Set(securityConfig.allowedExtensions);
 
 // Text-based extensions that support preview
 const TEXT_EXTENSIONS = new Set([
@@ -21,18 +19,7 @@ const TEXT_EXTENSIONS = new Set([
   'env', 'sh', 'bat', 'ps1', 'toml', 'ini', 'cfg', 'conf', 'log', 'dockerfile', 'tex', 'rtf'
 ]);
 
-const MAX_UPLOAD_SIZE = 25 * 1024 * 1024; // 25 MB
-
-/**
- * Sanitize a filename — remove dangerous characters, preserve extension.
- */
-function sanitizeFilename(filename: string): string {
-  return filename
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
-    .replace(/\.{2,}/g, '.')
-    .trim()
-    .replace(/^\.+/, '_');
-}
+const MAX_UPLOAD_SIZE = securityConfig.maxUploadBytes;
 
 /**
  * Get file extension from filename.
@@ -94,6 +81,12 @@ export function createFileRoutes(storage: StorageAdapter) {
           return reply.status(404).send({ error: 'Work not found' });
         }
 
+        // Check if uploads are suspended for this user
+        const user = await db.get('SELECT uploads_suspended FROM users WHERE clerk_id = ?', [request.userId]) as any;
+        if (user?.uploads_suspended) {
+          return reply.status(403).send({ error: 'Your uploads have been suspended by an administrator. Contact support for assistance.' });
+        }
+
         const parts = request.parts();
         const uploadedFiles: any[] = [];
         let totalSize = 0;
@@ -104,14 +97,6 @@ export function createFileRoutes(storage: StorageAdapter) {
           const filename = part.filename;
           if (!filename) continue;
 
-          const ext = getExtension(filename);
-          if (!ALLOWED_EXTENSIONS.has(ext)) {
-            return reply.status(400).send({
-              error: `Unsupported file extension: .${ext}`,
-              allowed: Array.from(ALLOWED_EXTENSIONS),
-            });
-          }
-
           // Read file data
           const chunks: Buffer[] = [];
           for await (const chunk of part.file) {
@@ -119,14 +104,30 @@ export function createFileRoutes(storage: StorageAdapter) {
           }
           const data = Buffer.concat(chunks);
 
-          totalSize += data.length;
-          if (totalSize > MAX_UPLOAD_SIZE) {
+          const validation = validateUploadCandidate({
+            filename,
+            size: data.length,
+            contentType: part.mimetype,
+            allowedExtensions: ALLOWED_EXTENSIONS,
+            maxBytes: MAX_UPLOAD_SIZE,
+          });
+
+          if (!validation.valid) {
             return reply.status(400).send({
-              error: `Total upload size exceeds 25 MB limit (current: ${(totalSize / 1024 / 1024).toFixed(1)} MB)`,
+              error: validation.reason,
+              allowed: Array.from(ALLOWED_EXTENSIONS),
             });
           }
 
-          const sanitized = sanitizeFilename(filename);
+          const ext = validation.extension ?? getExtension(filename);
+          totalSize += data.length;
+          if (totalSize > MAX_UPLOAD_SIZE) {
+            return reply.status(400).send({
+              error: `Total upload size exceeds ${Math.round(MAX_UPLOAD_SIZE / (1024 * 1024))} MB limit (current: ${(totalSize / 1024 / 1024).toFixed(1)} MB)`,
+            });
+          }
+
+          const sanitized = validation.sanitizedFilename ?? filename;
           const storageKey = buildStorageKey(
             request.userId,
             work.session_name,
@@ -134,10 +135,39 @@ export function createFileRoutes(storage: StorageAdapter) {
             work.title,
             sanitized
           );
-          const contentType = getContentType(ext);
+          const contentType = validation.contentType ?? getContentType(ext);
 
           // Upload to storage
           await storage.upload(storageKey, data, contentType);
+
+          await writeAuditLog({
+            userId: request.userId,
+            action: 'file_uploaded',
+            resourceType: 'file',
+            resourceId: undefined,
+            ipAddress: request.ip,
+            userAgent: request.headers['user-agent'],
+            metadata: {
+              workId: request.params.workId,
+              filename: sanitized,
+              fileSize: data.length,
+              mimeType: contentType,
+            },
+          });
+
+          await updateUserUsage({
+            userId: request.userId,
+            storageDelta: data.length,
+            fileDelta: 1,
+            uploadDelta: 1,
+            timestamp: new Date().toISOString(),
+          });
+          await evaluateAbuseSignals({
+            userId: request.userId,
+            action: 'upload',
+            ipAddress: request.ip,
+            userAgent: request.headers['user-agent'],
+          });
 
           // Store metadata in DB
           const file = await db.get(`

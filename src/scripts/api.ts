@@ -145,6 +145,24 @@ export const api = {
   restoreItem: (id: number) => request(`/recycle-bin/${id}/restore`, { method: 'POST' }),
   permanentDelete: (id: number) => request(`/recycle-bin/${id}`, { method: 'DELETE' }),
 
+  // Admin
+  getAdminSummary: () => request('/admin/summary'),
+  getAdminUsers: () => request('/admin/users'),
+  getAuditLogs: () => request('/admin/audit-logs'),
+  getAbuseFlags: () => request('/admin/abuse-flags'),
+  resolveFlag: (id: number, notes?: string) => request(`/admin/flags/${id}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ notes }),
+  }),
+  suspendUserUploads: (userId: string, notes?: string) => request(`/admin/users/${userId}/suspend-uploads`, {
+    method: 'POST',
+    body: JSON.stringify({ notes }),
+  }),
+  restoreUserAccount: (userId: string, notes?: string) => request(`/admin/users/${userId}/restore`, {
+    method: 'POST',
+    body: JSON.stringify({ notes }),
+  }),
+
   // Search
   search: (params: {
     q?: string;

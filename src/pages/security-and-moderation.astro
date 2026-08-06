@@ -1,0 +1,134 @@
+---
+import Layout from '../Layouts/Layout.astro';
+---
+
+<Layout title="Security & Moderation" showNav={true}>
+  <main class="security-page">
+    <div class="container security-page__container">
+      <section class="security-hero" aria-labelledby="security-title">
+        <p class="security-hero__eyebrow">Transparency</p>
+        <h1 id="security-title" class="security-hero__title">Security &amp; moderation</h1>
+        <p class="security-hero__summary">LabRepo uses a lightweight moderation layer to protect student work, reduce abuse, and keep the platform trustworthy.</p>
+      </section>
+
+      <section class="security-grid" aria-label="Moderation details">
+        <article class="security-item">
+          <h2 class="security-item__title">Why we log activity</h2>
+          <p class="security-item__copy">We record key events such as logins, uploads, downloads, and admin actions so we can investigate issues and maintain a secure history.</p>
+        </article>
+
+        <article class="security-item">
+          <h2 class="security-item__title">What information we collect</h2>
+          <p class="security-item__copy">We store metadata such as file names, size, upload time, uploader identity, and basic request details. We do not inspect file contents for moderation.</p>
+        </article>
+
+        <article class="security-item">
+          <h2 class="security-item__title">Abuse prevention</h2>
+          <p class="security-item__copy">We use rate limits, suspicious-activity detection, and admin review tools to reduce spam, storage abuse, and repeated failed login attempts.</p>
+        </article>
+
+        <article class="security-item">
+          <h2 class="security-item__title">Your privacy</h2>
+          <p class="security-item__copy">Private security data is stored server-side and is not sold or used for advertising. We only use it to protect the service and investigate abuse.</p>
+        </article>
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .security-page {
+    padding-block: clamp(36px, 6vw, 72px) clamp(64px, 8vw, 108px);
+  }
+
+  .security-page__container {
+    width: min(100% - 36px, 1080px);
+  }
+
+  .security-hero {
+    position: relative;
+    border: 1px solid var(--color-divider);
+    border-radius: 22px;
+    padding: clamp(24px, 4vw, 42px);
+    background:
+      radial-gradient(circle at 92% 0%, rgba(197, 27, 27, 0.19), transparent 45%),
+      linear-gradient(155deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.02));
+    box-shadow: var(--shadow-soft);
+  }
+
+  .security-hero__eyebrow {
+    color: var(--color-primary-on-dark);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .security-hero__title {
+    margin-top: 10px;
+    font-size: clamp(2rem, 4.3vw, 3.2rem);
+    letter-spacing: -0.04em;
+    line-height: 1.02;
+  }
+
+  .security-hero__summary {
+    margin-top: 16px;
+    max-width: 66ch;
+    color: var(--color-ink-muted);
+    font-size: clamp(1rem, 1.4vw, 1.3rem);
+    line-height: 1.62;
+  }
+
+  .security-grid {
+    display: grid;
+    gap: 14px;
+    margin-top: clamp(18px, 3vw, 28px);
+  }
+
+  .security-item {
+    border: 1px solid var(--color-divider);
+    border-radius: 18px;
+    padding: clamp(18px, 2.8vw, 28px);
+    background: rgba(255, 255, 255, 0.04);
+    transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+  }
+
+  .security-item:hover {
+    border-color: rgba(255, 113, 113, 0.42);
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-2px);
+  }
+
+  .security-item__title {
+    font-size: clamp(1.45rem, 2.7vw, 2.1rem);
+    letter-spacing: -0.028em;
+  }
+
+  .security-item__copy {
+    margin-top: 12px;
+    max-width: 76ch;
+    color: var(--color-ink-muted);
+    line-height: 1.7;
+    font-size: clamp(1rem, 1.2vw, 1.18rem);
+  }
+
+  @media (max-width: 767px) {
+    .security-page__container {
+      width: min(100% - 24px, 1080px);
+    }
+
+    .security-grid {
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .security-item {
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .security-item__copy {
+      line-height: 1.62;
+    }
+  }
+</style>

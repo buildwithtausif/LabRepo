@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDatabase } from '../db/runtime.js';
+import { updateUserUsage } from '../services/usage.service.js';
+import { evaluateAbuseSignals } from '../services/moderation.service.js';
 
 export async function userRoutes(fastify: FastifyInstance): Promise<void> {
   // Get user status (onboarding state)
@@ -10,8 +12,13 @@ export async function userRoutes(fastify: FastifyInstance): Promise<void> {
     if (!user) {
       // First time user — create record
       await db.run('INSERT INTO users (clerk_id) VALUES (?)', [request.userId]);
+      await updateUserUsage({ userId: request.userId, loginDelta: 1, timestamp: new Date().toISOString() });
+      await evaluateAbuseSignals({ userId: request.userId, action: 'login', ipAddress: request.ip, userAgent: request.headers['user-agent'] });
       return { onboarding_completed: false, is_new: true };
     }
+
+    await updateUserUsage({ userId: request.userId, loginDelta: 1, timestamp: new Date().toISOString() });
+    await evaluateAbuseSignals({ userId: request.userId, action: 'login', ipAddress: request.ip, userAgent: request.headers['user-agent'] });
 
     return {
       onboarding_completed: Boolean(user.onboarding_completed),
@@ -30,6 +37,7 @@ export async function userRoutes(fastify: FastifyInstance): Promise<void> {
     } else {
       await db.run('UPDATE users SET onboarding_completed = 1, updated_at = datetime(\'now\') WHERE clerk_id = ?', [request.userId]);
     }
+    await updateUserUsage({ userId: request.userId, loginDelta: 1, timestamp: new Date().toISOString() });
 
     return { success: true };
   });
