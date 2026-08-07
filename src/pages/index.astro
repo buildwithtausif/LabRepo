@@ -80,7 +80,7 @@ import { Show, SignUpButton } from "@clerk/astro/components";
   ["hero-signup", "feature-signup", "cta-signup"].forEach((id) => {
     document.getElementById(id)?.addEventListener("click", (event) => {
       event.preventDefault();
-      (window as any).Clerk?.openSignUp();
+      (window as any).Clerk?.openSignUp({ fallbackRedirectUrl: "/dashboard", forceRedirectUrl: "/dashboard" });
     });
   });
 </script>

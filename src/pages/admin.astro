@@ -314,7 +314,7 @@ import { Show } from '@clerk/astro/components';
         // Wait for Clerk to be ready
         await new Promise<void>((resolve) => {
           const check = () => {
-            if ((window as any).Clerk?.session) resolve();
+            if ((window as any).Clerk && (window as any).Clerk.isReady()) resolve();
             else setTimeout(check, 100);
           };
           check();
@@ -636,8 +636,9 @@ import { Show } from '@clerk/astro/components';
               const btn = (e.target as HTMLElement).querySelector('button');
               if (btn) btn.disabled = true;
               
-              const token = await window.Clerk.session.getToken();
-              const res = await fetch(`${API_URL}/admin/seo/og-image`, {
+              const token = await window.Clerk.session?.getToken();
+              if (!token) throw new Error("No session token");
+              const res = await fetch(`/api/admin/seo/og-image`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData,

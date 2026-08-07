@@ -165,7 +165,7 @@ import { Show } from "@clerk/astro/components";
         // Wait for Clerk to be ready
         await new Promise<void>((resolve) => {
           const check = () => {
-            if ((window as any).Clerk?.session) resolve();
+            if ((window as any).Clerk && (window as any).Clerk.isReady()) resolve();
             else setTimeout(check, 100);
           };
           check();
