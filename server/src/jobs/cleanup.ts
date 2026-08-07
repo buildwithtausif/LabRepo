@@ -1,5 +1,7 @@
-import { getDatabase } from '../db/runtime.js';
+import { getDb } from '../db/runtime.js';
+import { recycleBin, academicSessions, subjects, works, files } from '../db/schema.js';
 import type { StorageAdapter } from '../storage/adapter.js';
+import { eq, lte, and, sql } from 'drizzle-orm';
 
 /**
  * Cleanup job — runs periodically to:
@@ -17,33 +19,33 @@ export function startCleanupJob(storage: StorageAdapter): void {
 }
 
 async function runCleanup(storage: StorageAdapter): Promise<void> {
-  const db = getDatabase();
+  const db = getDb();
   const now = new Date().toISOString();
 
   // 1. Clean expired recycle bin items
-  const expiredItems = await db.all(
-    "SELECT * FROM recycle_bin WHERE expires_at <= ?"
-  , [now]) as any[];
+  const expiredItems = await db
+    .select()
+    .from(recycleBin)
+    .where(lte(recycleBin.expiresAt, now));
 
   for (const item of expiredItems) {
-    let data;
+    let data: any;
     try {
-      data = JSON.parse(item.original_data);
+      data = JSON.parse(item.originalData);
     } catch {
       continue;
     }
 
-    // Delete files from storage
-    const files = extractAllFiles(item.item_type, data);
-    for (const file of files) {
+    const filesToDelete = extractAllFiles(item.itemType, data);
+    for (const file of filesToDelete) {
       try {
-        await storage.delete(file.storage_key);
+        await storage.delete(file.storage_key || file.storageKey);
       } catch (err) {
-        console.error(`Failed to delete storage key ${file.storage_key}:`, err);
+        console.error(`Failed to delete storage key ${file.storage_key || file.storageKey}:`, err);
       }
     }
 
-    await db.run('DELETE FROM recycle_bin WHERE id = ?', [item.id]);
+    await db.delete(recycleBin).where(eq(recycleBin.id, item.id));
   }
 
   if (expiredItems.length > 0) {
@@ -51,41 +53,53 @@ async function runCleanup(storage: StorageAdapter): Promise<void> {
   }
 
   // 2. Auto-delete sessions past their auto_delete_date
-  const expiredSessions = await db.all(`
-    SELECT * FROM academic_sessions 
-    WHERE auto_delete = 1 AND auto_delete_date IS NOT NULL AND auto_delete_date <= ?
-  `, [now.split('T')[0]]) as any[];
+  const today = now.split('T')[0];
+  const expiredSessions = await db
+    .select()
+    .from(academicSessions)
+    .where(and(
+      eq(academicSessions.autoDelete, 1),
+      sql`${academicSessions.autoDeleteDate} IS NOT NULL`,
+      lte(academicSessions.autoDeleteDate, today),
+    ));
 
   for (const session of expiredSessions) {
-    const subjects = await db.all('SELECT * FROM subjects WHERE session_id = ?', [session.id]) as any[];
-    const subjectIds = subjects.map((s: any) => s.id);
+    const sessionSubjects = await db.select().from(subjects).where(eq(subjects.sessionId, session.id));
+    const subjectIds = sessionSubjects.map((s) => s.id);
 
-    let works: any[] = [];
-    let files: any[] = [];
+    let sessionWorks: typeof works.$inferSelect[] = [];
+    let sessionFiles: typeof files.$inferSelect[] = [];
+
     if (subjectIds.length > 0) {
-      const placeholders = subjectIds.map(() => '?').join(',');
-      works = await db.all(`SELECT * FROM works WHERE subject_id IN (${placeholders})`, subjectIds) as any[];
-      const workIds = works.map((w: any) => w.id);
+      sessionWorks = await db
+        .select()
+        .from(works)
+        .where(sql`${works.subjectId} IN (${sql.join(subjectIds.map(id => sql`${id}`), sql`, `)})`);
+
+      const workIds = sessionWorks.map((w) => w.id);
       if (workIds.length > 0) {
-        const wPlaceholders = workIds.map(() => '?').join(',');
-        files = await db.all(`SELECT * FROM files WHERE work_id IN (${wPlaceholders})`, workIds) as any[];
+        sessionFiles = await db
+          .select()
+          .from(files)
+          .where(sql`${files.workId} IN (${sql.join(workIds.map(id => sql`${id}`), sql`, `)})`);
       }
     }
 
-    // Move to recycle bin with 7-day retention
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const deleteTransaction = async () => {
-      await db.run(`
-        INSERT INTO recycle_bin (user_id, item_type, item_id, original_data, expires_at)
-        VALUES (?, 'session', ?, ?, ?)
-      `, [session.user_id, session.id, JSON.stringify({ session, subjects, works, files }), expiresAt]);
+    await db.transaction(async (tx) => {
+      await tx.insert(recycleBin).values({
+        userId: session.userId,
+        itemType: 'session',
+        itemId: session.id,
+        originalData: JSON.stringify({ session, subjects: sessionSubjects, works: sessionWorks, files: sessionFiles }),
+        expiresAt,
+      });
 
-      await db.run('DELETE FROM academic_sessions WHERE id = ?', [session.id]);
-    };
+      await tx.delete(academicSessions).where(eq(academicSessions.id, session.id));
+    });
 
-    await db.transaction(deleteTransaction);
-    console.log(`[cleanup] Auto-deleted session "${session.name}" for user ${session.user_id}`);
+    console.log(`[cleanup] Auto-deleted session "${session.name}" for user ${session.userId}`);
   }
 }
 

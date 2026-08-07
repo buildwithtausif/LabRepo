@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { getDatabase } from '../db/runtime.js';
+import { getDb } from '../db/runtime.js';
+import { files, works, subjects, academicSessions } from '../db/schema.js';
+import { eq, and, like, gte, lte, sql } from 'drizzle-orm';
 
 interface SearchQuery {
   q?: string;
@@ -13,144 +15,145 @@ interface SearchQuery {
 
 export async function searchRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get<{ Querystring: SearchQuery }>('/api/search', async (request) => {
-    const db = getDatabase();
+    const db = getDb();
     const { q, sort, session_id, subject_id, extension, date_from, date_to } = request.query;
 
-    const conditions: string[] = ['f.user_id = ?'];
-    const params: any[] = [request.userId];
+    // Build dynamic conditions
+    const conditions: ReturnType<typeof eq>[] = [eq(files.userId, request.userId)];
 
-    // Text search across subjects, work titles, and filenames
     if (q && q.trim()) {
       const searchTerm = `%${q.trim()}%`;
-      conditions.push(`(
-        f.filename LIKE ? OR 
-        w.title LIKE ? OR 
-        sub.name LIKE ?
-      )`);
-      params.push(searchTerm, searchTerm, searchTerm);
+      conditions.push(
+        sql`(${files.filename} LIKE ${searchTerm} OR ${works.title} LIKE ${searchTerm} OR ${subjects.name} LIKE ${searchTerm})` as any,
+      );
     }
 
-    // Filter by session
     if (session_id) {
-      conditions.push('s.id = ?');
-      params.push(session_id);
+      conditions.push(eq(academicSessions.id, Number(session_id)));
     }
 
-    // Filter by subject
     if (subject_id) {
-      conditions.push('sub.id = ?');
-      params.push(subject_id);
+      conditions.push(eq(subjects.id, Number(subject_id)));
     }
 
-    // Filter by extension
     if (extension) {
-      conditions.push('f.extension = ?');
-      params.push(extension.toLowerCase().replace('.', ''));
+      conditions.push(eq(files.extension, extension.toLowerCase().replace('.', '')));
     }
 
-    // Filter by date range
     if (date_from) {
-      conditions.push('f.created_at >= ?');
-      params.push(date_from);
+      conditions.push(gte(files.createdAt, date_from));
     }
     if (date_to) {
-      conditions.push('f.created_at <= ?');
-      params.push(date_to);
+      conditions.push(lte(files.createdAt, date_to));
     }
 
     // Sorting
-    let orderBy = 'f.created_at DESC'; // default: newest
+    let orderByClause;
     switch (sort) {
       case 'oldest':
-        orderBy = 'f.created_at ASC';
+        orderByClause = sql`${files.createdAt} ASC`;
         break;
       case 'a-z':
-        orderBy = 'f.filename ASC';
+        orderByClause = sql`${files.filename} ASC`;
         break;
       case 'z-a':
-        orderBy = 'f.filename DESC';
+        orderByClause = sql`${files.filename} DESC`;
         break;
       case 'recently-updated':
-        orderBy = 'w.updated_at DESC';
+        orderByClause = sql`${works.updatedAt} DESC`;
         break;
+      default:
+        orderByClause = sql`${files.createdAt} DESC`;
     }
 
-    const whereClause = conditions.join(' AND ');
+    const results = await db
+      .select({
+        id: files.id,
+        filename: files.filename,
+        extension: files.extension,
+        size_bytes: files.sizeBytes,
+        created_at: files.createdAt,
+        work_id: works.id,
+        work_title: works.title,
+        subject_id: subjects.id,
+        subject_name: subjects.name,
+        session_id: academicSessions.id,
+        session_name: academicSessions.name,
+      })
+      .from(files)
+      .innerJoin(works, eq(files.workId, works.id))
+      .innerJoin(subjects, eq(works.subjectId, subjects.id))
+      .innerJoin(academicSessions, eq(subjects.sessionId, academicSessions.id))
+      .where(and(...conditions))
+      .orderBy(orderByClause)
+      .limit(100);
 
-    const results = await db.all(`
-      SELECT 
-        f.id, f.filename, f.extension, f.size_bytes, f.created_at,
-        w.id as work_id, w.title as work_title,
-        sub.id as subject_id, sub.name as subject_name,
-        s.id as session_id, s.name as session_name
-      FROM files f
-      JOIN works w ON f.work_id = w.id
-      JOIN subjects sub ON w.subject_id = sub.id
-      JOIN academic_sessions s ON sub.session_id = s.id
-      WHERE ${whereClause}
-      ORDER BY ${orderBy}
-      LIMIT 100
-    `, params);
-
-    // Also search for matching works (even without files)
-    const workConditions: string[] = ['w.user_id = ?'];
-    const workParams: any[] = [request.userId];
+    // Work search conditions
+    const workConditions: ReturnType<typeof eq>[] = [eq(works.userId, request.userId)];
 
     if (q && q.trim()) {
       const searchTerm = `%${q.trim()}%`;
-      workConditions.push('(w.title LIKE ? OR sub.name LIKE ?)');
-      workParams.push(searchTerm, searchTerm);
+      workConditions.push(
+        sql`(${works.title} LIKE ${searchTerm} OR ${subjects.name} LIKE ${searchTerm})` as any,
+      );
     }
 
     if (session_id) {
-      workConditions.push('s.id = ?');
-      workParams.push(session_id);
+      workConditions.push(eq(academicSessions.id, Number(session_id)));
     }
 
     if (subject_id) {
-      workConditions.push('sub.id = ?');
-      workParams.push(subject_id);
+      workConditions.push(eq(subjects.id, Number(subject_id)));
     }
 
-    const workWhereClause = workConditions.join(' AND ');
-
-    const workResults = await db.all(`
-      SELECT 
-        w.id, w.title, w.created_at, w.updated_at,
-        sub.id as subject_id, sub.name as subject_name,
-        s.id as session_id, s.name as session_name,
-        (SELECT COUNT(*) FROM files WHERE work_id = w.id) as file_count
-      FROM works w
-      JOIN subjects sub ON w.subject_id = sub.id
-      JOIN academic_sessions s ON sub.session_id = s.id
-      WHERE ${workWhereClause}
-      ORDER BY w.updated_at DESC
-      LIMIT 50
-    `, workParams);
+    const workResults = await db
+      .select({
+        id: works.id,
+        title: works.title,
+        created_at: works.createdAt,
+        updated_at: works.updatedAt,
+        subject_id: subjects.id,
+        subject_name: subjects.name,
+        session_id: academicSessions.id,
+        session_name: academicSessions.name,
+        file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = ${works.id})`,
+      })
+      .from(works)
+      .innerJoin(subjects, eq(works.subjectId, subjects.id))
+      .innerJoin(academicSessions, eq(subjects.sessionId, academicSessions.id))
+      .where(and(...workConditions))
+      .orderBy(sql`${works.updatedAt} DESC`)
+      .limit(50);
 
     return { files: results, works: workResults };
   });
 
-  // Get available filter options for the user
+  // Get available filter options
   fastify.get('/api/search/filters', async (request) => {
-    const db = getDatabase();
+    const db = getDb();
 
-    const sessions = await db.all(
-      'SELECT id, name FROM academic_sessions WHERE user_id = ? ORDER BY name'
-    , [request.userId]);
+    const sessions = await db
+      .select({ id: academicSessions.id, name: academicSessions.name })
+      .from(academicSessions)
+      .where(eq(academicSessions.userId, request.userId))
+      .orderBy(academicSessions.name);
 
-    const subjects = await db.all(
-      'SELECT id, name, session_id FROM subjects WHERE user_id = ? ORDER BY name'
-    , [request.userId]);
+    const subjectsList = await db
+      .select({ id: subjects.id, name: subjects.name, session_id: subjects.sessionId })
+      .from(subjects)
+      .where(eq(subjects.userId, request.userId))
+      .orderBy(subjects.name);
 
-    const extensions = await db.all(`
-      SELECT DISTINCT extension FROM files WHERE user_id = ? ORDER BY extension
-    `, [request.userId]) as any[];
+    const extensions = await db
+      .selectDistinct({ extension: files.extension })
+      .from(files)
+      .where(eq(files.userId, request.userId))
+      .orderBy(files.extension);
 
     return {
       sessions,
-      subjects,
-      extensions: extensions.map((e: any) => e.extension),
+      subjects: subjectsList,
+      extensions: extensions.map((e) => e.extension),
     };
   });
 }

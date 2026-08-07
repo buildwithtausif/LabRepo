@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { getDatabase } from '../db/runtime.js';
+import { getDb } from '../db/runtime.js';
+import { works, subjects, academicSessions, files, recycleBin } from '../db/schema.js';
+import { eq, and, sql } from 'drizzle-orm';
 
 interface CreateWorkBody {
   title?: string;
@@ -14,46 +16,66 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get<{ Params: { subjectId: string } }>(
     '/api/subjects/:subjectId/works',
     async (request, reply) => {
-      const db = getDatabase();
+      const db = getDb();
 
-      // Verify subject ownership
-      const subject = await db.get(
-        'SELECT id FROM subjects WHERE id = ? AND user_id = ?'
-      , [request.params.subjectId, request.userId]);
+      const [subject] = await db
+        .select({ id: subjects.id })
+        .from(subjects)
+        .where(and(
+          eq(subjects.id, Number(request.params.subjectId)),
+          eq(subjects.userId, request.userId),
+        ))
+        .limit(1);
 
       if (!subject) {
         return reply.status(404).send({ error: 'Subject not found' });
       }
 
-      const works = await db.all(`
-        SELECT w.*,
-          (SELECT COUNT(*) FROM files WHERE work_id = w.id) as file_count,
-          (SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = w.id) as total_size
-        FROM works w
-        WHERE w.subject_id = ?
-        ORDER BY w.created_at DESC
-      `, [request.params.subjectId]);
+      const result = await db
+        .select({
+          id: works.id,
+          subjectId: works.subjectId,
+          userId: works.userId,
+          title: works.title,
+          createdAt: works.createdAt,
+          updatedAt: works.updatedAt,
+          file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = ${works.id})`,
+          total_size: sql<number>`(SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = ${works.id})`,
+        })
+        .from(works)
+        .where(eq(works.subjectId, Number(request.params.subjectId)))
+        .orderBy(sql`${works.createdAt} DESC`);
 
-      return { works };
-    }
+      return { works: result };
+    },
   );
 
   // Get a single work
   fastify.get<{ Params: { id: string } }>('/api/works/:id', async (request, reply) => {
-    const db = getDatabase();
-    const work = await db.get(`
-      SELECT w.*,
-        sub.name as subject_name,
-        sub.id as subject_id,
-        s.name as session_name,
-        s.id as session_id,
-        (SELECT COUNT(*) FROM files WHERE work_id = w.id) as file_count,
-        (SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = w.id) as total_size
-      FROM works w
-      JOIN subjects sub ON w.subject_id = sub.id
-      JOIN academic_sessions s ON sub.session_id = s.id
-      WHERE w.id = ? AND w.user_id = ?
-    `, [request.params.id, request.userId]) as any;
+    const db = getDb();
+    const [work] = await db
+      .select({
+        id: works.id,
+        subjectId: works.subjectId,
+        userId: works.userId,
+        title: works.title,
+        createdAt: works.createdAt,
+        updatedAt: works.updatedAt,
+        subject_name: subjects.name,
+        subject_id: subjects.id,
+        session_name: academicSessions.name,
+        session_id: academicSessions.id,
+        file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = ${works.id})`,
+        total_size: sql<number>`(SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = ${works.id})`,
+      })
+      .from(works)
+      .innerJoin(subjects, eq(works.subjectId, subjects.id))
+      .innerJoin(academicSessions, eq(subjects.sessionId, academicSessions.id))
+      .where(and(
+        eq(works.id, Number(request.params.id)),
+        eq(works.userId, request.userId),
+      ))
+      .limit(1);
 
     if (!work) {
       return reply.status(404).send({ error: 'Work not found' });
@@ -66,39 +88,49 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post<{ Params: { subjectId: string }; Body: CreateWorkBody }>(
     '/api/subjects/:subjectId/works',
     async (request, reply) => {
-      const db = getDatabase();
-
-      // Default title = current date
+      const db = getDb();
       const title = request.body?.title?.trim() || new Date().toISOString().split('T')[0];
 
-      const work = await db.get(
-        `
-          INSERT INTO works (subject_id, user_id, title)
-          SELECT ?, ?, ?
-          WHERE EXISTS (
-            SELECT 1 FROM subjects WHERE id = ? AND user_id = ?
-          )
-          RETURNING *
-        `,
-        [request.params.subjectId, request.userId, title, request.params.subjectId, request.userId]
-      ) as any;
+      // Verify subject ownership
+      const [subject] = await db
+        .select({ id: subjects.id })
+        .from(subjects)
+        .where(and(
+          eq(subjects.id, Number(request.params.subjectId)),
+          eq(subjects.userId, request.userId),
+        ))
+        .limit(1);
 
-      if (!work) {
+      if (!subject) {
         return reply.status(404).send({ error: 'Subject not found' });
       }
 
+      const [work] = await db
+        .insert(works)
+        .values({
+          subjectId: Number(request.params.subjectId),
+          userId: request.userId,
+          title,
+        })
+        .returning();
+
       return reply.status(201).send({ work });
-    }
+    },
   );
 
   // Update work
   fastify.patch<{ Params: { id: string }; Body: UpdateWorkBody }>(
     '/api/works/:id',
     async (request, reply) => {
-      const db = getDatabase();
-      const work = await db.get(
-        'SELECT * FROM works WHERE id = ? AND user_id = ?'
-      , [request.params.id, request.userId]) as any;
+      const db = getDb();
+      const [work] = await db
+        .select()
+        .from(works)
+        .where(and(
+          eq(works.id, Number(request.params.id)),
+          eq(works.userId, request.userId),
+        ))
+        .limit(1);
 
       if (!work) {
         return reply.status(404).send({ error: 'Work not found' });
@@ -109,40 +141,50 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: 'Work title cannot be empty' });
       }
 
-      const updated = await db.get(`
-        UPDATE works
-        SET title = COALESCE(?, title), updated_at = datetime('now')
-        WHERE id = ? AND user_id = ?
-        RETURNING *
-      `, [title?.trim() ?? null, request.params.id, request.userId]);
+      const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      if (title !== undefined) updateData.title = title.trim();
+
+      const [updated] = await db
+        .update(works)
+        .set(updateData)
+        .where(and(eq(works.id, Number(request.params.id)), eq(works.userId, request.userId)))
+        .returning();
+
       return { work: updated };
-    }
+    },
   );
 
   // Delete work (soft delete)
   fastify.delete<{ Params: { id: string } }>('/api/works/:id', async (request, reply) => {
-    const db = getDatabase();
-    const work = await db.get(
-      'SELECT * FROM works WHERE id = ? AND user_id = ?'
-    , [request.params.id, request.userId]) as any;
+    const db = getDb();
+    const [work] = await db
+      .select()
+      .from(works)
+      .where(and(
+        eq(works.id, Number(request.params.id)),
+        eq(works.userId, request.userId),
+      ))
+      .limit(1);
 
     if (!work) {
       return reply.status(404).send({ error: 'Work not found' });
     }
 
-    const files = await db.all('SELECT * FROM files WHERE work_id = ?', [work.id]);
+    const workFiles = await db.select().from(files).where(eq(files.workId, work.id));
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const deleteTransaction = async () => {
-      await db.run(`
-        INSERT INTO recycle_bin (user_id, item_type, item_id, original_data, expires_at)
-        VALUES (?, 'work', ?, ?, ?)
-      `, [request.userId, work.id, JSON.stringify({ work, files }), expiresAt]);
+    await db.transaction(async (tx) => {
+      await tx.insert(recycleBin).values({
+        userId: request.userId,
+        itemType: 'work',
+        itemId: work.id,
+        originalData: JSON.stringify({ work, files: workFiles }),
+        expiresAt,
+      });
 
-      await db.run('DELETE FROM works WHERE id = ?', [work.id]);
-    };
+      await tx.delete(works).where(eq(works.id, work.id));
+    });
 
-    await db.transaction(deleteTransaction);
     return { success: true, message: 'Work moved to recycle bin' };
   });
 }

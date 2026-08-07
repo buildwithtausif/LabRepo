@@ -1,4 +1,5 @@
-import { getDatabase } from '../db/runtime.js';
+import { getDb } from '../db/runtime.js';
+import { auditLogs } from '../db/schema.js';
 
 export interface AuditLogPayload {
   userId: string;
@@ -11,29 +12,15 @@ export interface AuditLogPayload {
 }
 
 export async function writeAuditLog(payload: AuditLogPayload): Promise<void> {
-  const db = getDatabase();
-  await db.run(
-    `
-      INSERT INTO audit_logs (
-        user_id,
-        action,
-        resource_type,
-        resource_id,
-        ip_address,
-        user_agent,
-        created_at,
-        metadata
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      payload.userId,
-      payload.action,
-      payload.resourceType ?? null,
-      payload.resourceId ?? null,
-      payload.ipAddress ?? null,
-      payload.userAgent ?? null,
-      new Date().toISOString(),
-      payload.metadata ? JSON.stringify(payload.metadata) : null,
-    ]
-  );
+  const db = getDb();
+  await db.insert(auditLogs).values({
+    userId: payload.userId,
+    action: payload.action,
+    resourceType: payload.resourceType ?? null,
+    resourceId: payload.resourceId != null ? String(payload.resourceId) : null,
+    ipAddress: payload.ipAddress ?? null,
+    userAgent: payload.userAgent ?? null,
+    createdAt: new Date().toISOString(),
+    metadata: payload.metadata ? JSON.stringify(payload.metadata) : null,
+  });
 }

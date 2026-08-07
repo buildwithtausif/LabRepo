@@ -1,52 +1,145 @@
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  CreateBucketCommand,
+} from '@aws-sdk/client-s3';
 import type { StorageAdapter } from './adapter.js';
+import { Readable } from 'stream';
 
-/**
- * S3Adapter — real AWS S3 implementation.
- * 
- * This is a stub for production use. To activate:
- * 1. Install @aws-sdk/client-s3: npm install @aws-sdk/client-s3
- * 2. Set real AWS environment variables
- * 3. Switch the storage adapter in src/index.ts
- * 
- * See PRODUCTION_SETUP.md for full instructions.
- */
 export class S3Adapter implements StorageAdapter {
-  // private client: S3Client;
-  // private bucket: string;
+  private client: S3Client;
+  private bucket: string;
 
   constructor() {
-    // const { S3Client } = await import('@aws-sdk/client-s3');
-    // this.client = new S3Client({
-    //   region: process.env.AWS_REGION,
-    //   endpoint: process.env.AWS_ENDPOINT,
-    //   credentials: {
-    //     accessKeyId: process.env.AWS_ACCESS_KEY!,
-    //     secretAccessKey: process.env.AWS_SECRET_KEY!,
-    //   },
-    // });
-    // this.bucket = process.env.AWS_BUCKET!;
-    throw new Error(
-      'S3Adapter is not yet configured. See PRODUCTION_SETUP.md for instructions.'
+    this.bucket = process.env.AWS_BUCKET || 'labrepo-storage';
+
+    const endpoint = process.env.AWS_ENDPOINT;
+    const region = process.env.AWS_REGION || 'us-east-1';
+    
+    // Check if it's likely MinIO or similar custom endpoint
+    const forcePathStyle = endpoint && !endpoint.includes('amazonaws.com');
+
+    this.client = new S3Client({
+      region,
+      endpoint,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY || 'minioadmin',
+        secretAccessKey: process.env.AWS_SECRET_KEY || 'minioadmin',
+      },
+      forcePathStyle: !!forcePathStyle,
+    });
+  }
+
+  async initBucket(): Promise<void> {
+    try {
+      await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: '' })).catch(() => {});
+      // In S3, HeadObject on empty key usually fails, we can just try CreateBucket directly and catch if it exists
+    } catch {
+      // Ignored
+    }
+
+    try {
+      await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }));
+      console.log(`[storage] Bucket "${this.bucket}" created.`);
+    } catch (err: any) {
+      if (err.name === 'BucketAlreadyExists' || err.name === 'BucketAlreadyOwnedByYou') {
+        // Bucket exists, fine.
+      } else {
+        console.error(`[storage] Error ensuring bucket "${this.bucket}":`, err);
+        throw err;
+      }
+    }
+  }
+
+  async upload(key: string, data: Buffer, contentType: string): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: data,
+        ContentType: contentType,
+      })
     );
   }
 
-  async upload(_key: string, _data: Buffer, _contentType: string): Promise<void> {
-    throw new Error('Not implemented — see PRODUCTION_SETUP.md');
+  async download(key: string): Promise<{ data: Buffer; contentType: string }> {
+    const result = await this.client.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      })
+    );
+
+    if (!result.Body) {
+      throw new Error('Empty response body');
+    }
+
+    // Convert stream to buffer
+    const stream = result.Body as Readable;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+    const data = Buffer.concat(chunks);
+
+    return {
+      data,
+      contentType: result.ContentType || 'application/octet-stream',
+    };
   }
 
-  async download(_key: string): Promise<{ data: Buffer; contentType: string }> {
-    throw new Error('Not implemented — see PRODUCTION_SETUP.md');
+  async delete(key: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      })
+    );
   }
 
-  async delete(_key: string): Promise<void> {
-    throw new Error('Not implemented — see PRODUCTION_SETUP.md');
+  async exists(key: string): Promise<boolean> {
+    try {
+      await this.client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        })
+      );
+      return true;
+    } catch (err: any) {
+      if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+        return false;
+      }
+      throw err;
+    }
   }
 
-  async exists(_key: string): Promise<boolean> {
-    throw new Error('Not implemented — see PRODUCTION_SETUP.md');
-  }
+  async list(prefix: string): Promise<string[]> {
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
 
-  async list(_prefix: string): Promise<string[]> {
-    throw new Error('Not implemented — see PRODUCTION_SETUP.md');
+    do {
+      const response = await this.client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        })
+      );
+
+      if (response.Contents) {
+        for (const item of response.Contents) {
+          if (item.Key) keys.push(item.Key);
+        }
+      }
+
+      continuationToken = response.NextContinuationToken;
+    } while (continuationToken);
+
+    return keys;
   }
 }

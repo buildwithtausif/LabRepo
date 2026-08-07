@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { getDatabase } from '../db/runtime.js';
+import { getDb } from '../db/runtime.js';
+import { subjects, academicSessions, works, files, recycleBin } from '../db/schema.js';
+import { eq, and, sql } from 'drizzle-orm';
 
 interface CreateSubjectBody {
   name: string;
@@ -14,44 +16,65 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get<{ Params: { sessionId: string } }>(
     '/api/sessions/:sessionId/subjects',
     async (request, reply) => {
-      const db = getDatabase();
+      const db = getDb();
 
       // Verify session ownership
-      const session = await db.get(
-        'SELECT id FROM academic_sessions WHERE id = ? AND user_id = ?'
-      , [request.params.sessionId, request.userId]);
+      const [session] = await db
+        .select({ id: academicSessions.id })
+        .from(academicSessions)
+        .where(and(
+          eq(academicSessions.id, Number(request.params.sessionId)),
+          eq(academicSessions.userId, request.userId),
+        ))
+        .limit(1);
 
       if (!session) {
         return reply.status(404).send({ error: 'Session not found' });
       }
 
-      const subjects = await db.all(`
-        SELECT s.*,
-          (SELECT COUNT(*) FROM works WHERE subject_id = s.id) as work_count,
-          (SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = s.id) as file_count,
-          (SELECT COALESCE(SUM(f.size_bytes), 0) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = s.id) as total_size
-        FROM subjects s
-        WHERE s.session_id = ?
-        ORDER BY s.name ASC
-      `, [request.params.sessionId]);
+      const result = await db
+        .select({
+          id: subjects.id,
+          sessionId: subjects.sessionId,
+          userId: subjects.userId,
+          name: subjects.name,
+          createdAt: subjects.createdAt,
+          updatedAt: subjects.updatedAt,
+          work_count: sql<number>`(SELECT COUNT(*) FROM works WHERE subject_id = ${subjects.id})`,
+          file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = ${subjects.id})`,
+          total_size: sql<number>`(SELECT COALESCE(SUM(f.size_bytes), 0) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = ${subjects.id})`,
+        })
+        .from(subjects)
+        .where(eq(subjects.sessionId, Number(request.params.sessionId)))
+        .orderBy(subjects.name);
 
-      return { subjects };
-    }
+      return { subjects: result };
+    },
   );
 
   // Get a single subject
   fastify.get<{ Params: { id: string } }>('/api/subjects/:id', async (request, reply) => {
-    const db = getDatabase();
-    const subject = await db.get(`
-      SELECT s.*,
-        (SELECT name FROM academic_sessions WHERE id = s.session_id) as session_name,
-        (SELECT id FROM academic_sessions WHERE id = s.session_id) as session_id,
-        (SELECT COUNT(*) FROM works WHERE subject_id = s.id) as work_count,
-        (SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = s.id) as file_count,
-        (SELECT COALESCE(SUM(f.size_bytes), 0) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = s.id) as total_size
-      FROM subjects s
-      WHERE s.id = ? AND s.user_id = ?
-    `, [request.params.id, request.userId]) as any;
+    const db = getDb();
+    const [subject] = await db
+      .select({
+        id: subjects.id,
+        sessionId: subjects.sessionId,
+        userId: subjects.userId,
+        name: subjects.name,
+        createdAt: subjects.createdAt,
+        updatedAt: subjects.updatedAt,
+        session_name: sql<string>`(SELECT name FROM academic_sessions WHERE id = ${subjects.sessionId})`,
+        session_id: subjects.sessionId,
+        work_count: sql<number>`(SELECT COUNT(*) FROM works WHERE subject_id = ${subjects.id})`,
+        file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = ${subjects.id})`,
+        total_size: sql<number>`(SELECT COALESCE(SUM(f.size_bytes), 0) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = ${subjects.id})`,
+      })
+      .from(subjects)
+      .where(and(
+        eq(subjects.id, Number(request.params.id)),
+        eq(subjects.userId, request.userId),
+      ))
+      .limit(1);
 
     if (!subject) {
       return reply.status(404).send({ error: 'Subject not found' });
@@ -70,33 +93,45 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: 'Subject name is required' });
       }
 
-      const db = getDatabase();
+      const db = getDb();
 
-      // Verify session ownership
-      const session = await db.get(
-        'SELECT id FROM academic_sessions WHERE id = ? AND user_id = ?'
-      , [request.params.sessionId, request.userId]);
+      const [session] = await db
+        .select({ id: academicSessions.id })
+        .from(academicSessions)
+        .where(and(
+          eq(academicSessions.id, Number(request.params.sessionId)),
+          eq(academicSessions.userId, request.userId),
+        ))
+        .limit(1);
 
       if (!session) {
         return reply.status(404).send({ error: 'Session not found' });
       }
 
-      // Check for duplicate
-      const existing = await db.get(
-        'SELECT id FROM subjects WHERE session_id = ? AND name = ?'
-      , [request.params.sessionId, name.trim()]);
+      const [existing] = await db
+        .select({ id: subjects.id })
+        .from(subjects)
+        .where(and(
+          eq(subjects.sessionId, Number(request.params.sessionId)),
+          eq(subjects.name, name.trim()),
+        ))
+        .limit(1);
 
       if (existing) {
         return reply.status(409).send({ error: 'A subject with this name already exists in this session' });
       }
 
-      const result = await db.run(
-        'INSERT INTO subjects (session_id, user_id, name) VALUES (?, ?, ?)'
-      , [request.params.sessionId, request.userId, name.trim()]);
+      const [subject] = await db
+        .insert(subjects)
+        .values({
+          sessionId: Number(request.params.sessionId),
+          userId: request.userId,
+          name: name.trim(),
+        })
+        .returning();
 
-      const subject = await db.get('SELECT * FROM subjects WHERE id = ?', [result.insertId]);
       return reply.status(201).send({ subject });
-    }
+    },
   );
 
   // Batch create subjects (for onboarding)
@@ -109,51 +144,64 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: 'At least one subject name is required' });
       }
 
-      const db = getDatabase();
+      const db = getDb();
 
-      // Verify session ownership
-      const session = await db.get(
-        'SELECT id FROM academic_sessions WHERE id = ? AND user_id = ?'
-      , [request.params.sessionId, request.userId]);
+      const [session] = await db
+        .select({ id: academicSessions.id })
+        .from(academicSessions)
+        .where(and(
+          eq(academicSessions.id, Number(request.params.sessionId)),
+          eq(academicSessions.userId, request.userId),
+        ))
+        .limit(1);
 
       if (!session) {
         return reply.status(404).send({ error: 'Session not found' });
       }
 
-      const created: any[] = [];
+      const created: typeof subjects.$inferSelect[] = [];
       const skipped: string[] = [];
 
-      const batchInsert = async () => {
+      await db.transaction(async (tx) => {
         for (const name of names) {
           const trimmed = name.trim();
           if (!trimmed) continue;
 
-          const result = await db.run(
-            'INSERT OR IGNORE INTO subjects (session_id, user_id, name) VALUES (?, ?, ?)'
-          , [request.params.sessionId, request.userId, trimmed]);
+          const inserted = await tx
+            .insert(subjects)
+            .values({
+              sessionId: Number(request.params.sessionId),
+              userId: request.userId,
+              name: trimmed,
+            })
+            .onConflictDoNothing()
+            .returning();
 
-          if (result.rowCount > 0) {
-            const subject = await db.get('SELECT * FROM subjects WHERE session_id = ? AND name = ?', [request.params.sessionId, trimmed]);
-            created.push(subject);
+          if (inserted.length > 0) {
+            created.push(inserted[0]);
           } else {
             skipped.push(trimmed);
           }
         }
-      };
+      });
 
-      await db.transaction(batchInsert);
       return reply.status(201).send({ created, skipped });
-    }
+    },
   );
 
   // Update subject
   fastify.patch<{ Params: { id: string }; Body: UpdateSubjectBody }>(
     '/api/subjects/:id',
     async (request, reply) => {
-      const db = getDatabase();
-      const subject = await db.get(
-        'SELECT * FROM subjects WHERE id = ? AND user_id = ?'
-      , [request.params.id, request.userId]) as any;
+      const db = getDb();
+      const [subject] = await db
+        .select()
+        .from(subjects)
+        .where(and(
+          eq(subjects.id, Number(request.params.id)),
+          eq(subjects.userId, request.userId),
+        ))
+        .limit(1);
 
       if (!subject) {
         return reply.status(404).send({ error: 'Subject not found' });
@@ -164,55 +212,73 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
         if (!name.trim()) {
           return reply.status(400).send({ error: 'Subject name cannot be empty' });
         }
-        const duplicate = await db.get(
-          'SELECT id FROM subjects WHERE session_id = ? AND name = ? AND id != ?'
-        , [subject.session_id, name.trim(), request.params.id]);
+        const [duplicate] = await db
+          .select({ id: subjects.id })
+          .from(subjects)
+          .where(and(
+            eq(subjects.sessionId, subject.sessionId),
+            eq(subjects.name, name.trim()),
+            sql`${subjects.id} != ${Number(request.params.id)}`,
+          ))
+          .limit(1);
         if (duplicate) {
           return reply.status(409).send({ error: 'A subject with this name already exists' });
         }
       }
 
-      await db.run(`
-        UPDATE subjects SET name = COALESCE(?, name), updated_at = datetime('now')
-        WHERE id = ? AND user_id = ?
-      `, [name?.trim() ?? null, request.params.id, request.userId]);
+      const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      if (name !== undefined) updateData.name = name.trim();
 
-      const updated = await db.get('SELECT * FROM subjects WHERE id = ?', [request.params.id]);
+      const [updated] = await db
+        .update(subjects)
+        .set(updateData)
+        .where(eq(subjects.id, Number(request.params.id)))
+        .returning();
+
       return { subject: updated };
-    }
+    },
   );
 
   // Delete subject (soft delete)
   fastify.delete<{ Params: { id: string } }>('/api/subjects/:id', async (request, reply) => {
-    const db = getDatabase();
-    const subject = await db.get(
-      'SELECT * FROM subjects WHERE id = ? AND user_id = ?'
-    , [request.params.id, request.userId]) as any;
+    const db = getDb();
+    const [subject] = await db
+      .select()
+      .from(subjects)
+      .where(and(
+        eq(subjects.id, Number(request.params.id)),
+        eq(subjects.userId, request.userId),
+      ))
+      .limit(1);
 
     if (!subject) {
       return reply.status(404).send({ error: 'Subject not found' });
     }
 
-    const works = await db.all('SELECT * FROM works WHERE subject_id = ?', [subject.id]);
-    const workIds = works.map((w: any) => w.id);
-    let files: any[] = [];
+    const subjectWorks = await db.select().from(works).where(eq(works.subjectId, subject.id));
+    const workIds = subjectWorks.map((w) => w.id);
+    let subjectFiles: typeof files.$inferSelect[] = [];
     if (workIds.length > 0) {
-      const placeholders = workIds.map(() => '?').join(',');
-      files = await db.all(`SELECT * FROM files WHERE work_id IN (${placeholders})`, workIds);
+      subjectFiles = await db
+        .select()
+        .from(files)
+        .where(sql`${files.workId} IN (${sql.join(workIds.map(id => sql`${id}`), sql`, `)})`);
     }
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const deleteTransaction = async () => {
-      await db.run(`
-        INSERT INTO recycle_bin (user_id, item_type, item_id, original_data, expires_at)
-        VALUES (?, 'subject', ?, ?, ?)
-      `, [request.userId, subject.id, JSON.stringify({ subject, works, files }), expiresAt]);
+    await db.transaction(async (tx) => {
+      await tx.insert(recycleBin).values({
+        userId: request.userId,
+        itemType: 'subject',
+        itemId: subject.id,
+        originalData: JSON.stringify({ subject, works: subjectWorks, files: subjectFiles }),
+        expiresAt,
+      });
 
-      await db.run('DELETE FROM subjects WHERE id = ?', [subject.id]);
-    };
+      await tx.delete(subjects).where(eq(subjects.id, subject.id));
+    });
 
-    await db.transaction(deleteTransaction);
     return { success: true, message: 'Subject moved to recycle bin' };
   });
 }

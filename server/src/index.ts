@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
-import { closeDatabase, getDatabaseDriver, initDatabase } from './db/runtime.js';
+import { initDatabase, closeDatabase } from './db/runtime.js';
 import { clerkAuth } from './auth/clerk.js';
 import { MockS3Adapter } from './storage/mock-s3.js';
 import { userRoutes } from './routes/user.js';
@@ -12,7 +12,6 @@ import { createFileRoutes } from './routes/files.js';
 import { createDownloadRoutes } from './routes/download.js';
 import { createRecycleBinRoutes } from './routes/recycle-bin.js';
 import { searchRoutes } from './routes/search.js';
-import { adminRoutes } from './routes/admin.js';
 import { startCleanupJob } from './jobs/cleanup.js';
 import { getSecurityConfig } from './services/config.service.js';
 
@@ -20,21 +19,46 @@ const PORT = parseInt(process.env.API_PORT || '3001', 10);
 const HOST = process.env.API_HOST || '0.0.0.0';
 const securityConfig = getSecurityConfig();
 
-async function start() {
-  // Initialize database
-  await initDatabase();
-  console.log(`[server] Database initialized (${getDatabaseDriver() ?? 'unknown'})`);
+// Determine CORS origins from environment or defaults
+function getCorsOrigins(): string[] {
+  const envOrigins = process.env.CORS_ORIGINS;
+  if (envOrigins) {
+    return envOrigins.split(',').map((o) => o.trim()).filter(Boolean);
+  }
+  return [
+    'http://localhost:4321',
+    'http://localhost:3000',
+    'http://127.0.0.1:4321',
+    'http://127.0.0.1:3000',
+  ];
+}
 
-  // Initialize storage adapter (mock S3 for development)
-  const storage = new MockS3Adapter();
-  console.log('[server] Storage adapter initialized (MockS3)');
+async function start() {
+  // Initialize database (runs migrations — blocks if they fail)
+  await initDatabase();
+  console.log('[server] Database initialized (PostgreSQL + Drizzle ORM)');
+
+  // Initialize storage adapter based on environment variable
+  const storageDriver = process.env.STORAGE_DRIVER || 'mock';
+  let storage;
+  
+  if (storageDriver === 'minio' || storageDriver === 's3') {
+    const { S3Adapter } = await import('./storage/s3.js');
+    const s3Adapter = new S3Adapter();
+    await s3Adapter.initBucket();
+    storage = s3Adapter;
+    console.log(`[server] Storage adapter initialized (${storageDriver === 'minio' ? 'MinIO' : 'AWS S3'})`);
+  } else {
+    storage = new MockS3Adapter();
+    console.log('[server] Storage adapter initialized (MockS3)');
+  }
 
   // Create Fastify instance
   const fastify = Fastify({
     logger: true,
   });
 
-  // Custom JSON parser to safely handle empty bodies (avoids FST_ERR_CTP_EMPTY_JSON_BODY)
+  // Custom JSON parser to safely handle empty bodies
   fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
     try {
       if (!body || (body as string).trim() === '') {
@@ -50,12 +74,7 @@ async function start() {
 
   // Register CORS
   await fastify.register(cors, {
-    origin: [
-      'http://localhost:4321',
-      'http://localhost:3000',
-      'http://127.0.0.1:4321',
-      'http://127.0.0.1:3000',
-    ],
+    origin: getCorsOrigins(),
     credentials: true,
   });
 
@@ -63,7 +82,7 @@ async function start() {
   await fastify.register(multipart, {
     limits: {
       fileSize: securityConfig.maxUploadBytes,
-      files: 20, // max 20 files per request
+      files: 20,
     },
   });
 
@@ -81,8 +100,25 @@ async function start() {
   await fastify.register(createFileRoutes(storage));
   await fastify.register(createDownloadRoutes(storage));
   await fastify.register(createRecycleBinRoutes(storage));
+  
+  // Public proxy for storage (e.g. for SEO OG images)
+  fastify.get<{ Params: { '*': string } }>('/api/public/storage/*', async (request, reply) => {
+    const key = request.params['*'];
+    if (!key || key.includes('..')) {
+      return reply.status(400).send({ error: 'Invalid path' });
+    }
+    try {
+      const { data, contentType } = await storage.download(key);
+      return reply.header('Content-Type', contentType).send(data);
+    } catch (err) {
+      return reply.status(404).send({ error: 'Not found' });
+    }
+  });
+
   await fastify.register(searchRoutes);
-  await fastify.register(adminRoutes);
+  
+  const { createAdminRoutes } = await import('./routes/admin.js');
+  await fastify.register(createAdminRoutes(storage));
 
   // Start cleanup job
   startCleanupJob(storage);

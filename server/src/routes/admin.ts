@@ -1,121 +1,146 @@
 import type { FastifyInstance } from 'fastify';
-import { getDatabase } from '../db/runtime.js';
+import { getDb } from '../db/runtime.js';
+import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings } from '../db/schema.js';
 import { writeAuditLog } from '../services/audit.service.js';
+import { eq, sql, count, sum } from 'drizzle-orm';
 
 function isAdminUser(userId: string): boolean {
   return userId === process.env.ADMIN_USER_ID || userId === process.env.CLERK_ADMIN_USER_ID;
 }
 
-export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
-  fastify.addHook('preHandler', async (request, reply) => {
+export function createAdminRoutes(storage: StorageAdapter) {
+  return async function adminRoutes(fastify: FastifyInstance): Promise<void> {
+    fastify.addHook('preHandler', async (request, reply) => {
     if (!isAdminUser(request.userId)) {
       return reply.status(403).send({ error: 'Admin access required' });
     }
   });
 
   // Summary stats
-  fastify.get('/api/admin/summary', async (request) => {
-    const db = getDatabase();
-    const [users, flags, logs, usage] = await Promise.all([
-      db.get('SELECT COUNT(*) as count FROM users'),
-      db.get('SELECT COUNT(*) as count FROM abuse_flags WHERE resolved = 0'),
-      db.get('SELECT COUNT(*) as count FROM audit_logs'),
-      db.get('SELECT SUM(storage_used) as storage_used, SUM(total_uploads) as total_uploads, SUM(total_downloads) as total_downloads FROM user_usage_stats'),
-    ]);
+  fastify.get('/api/admin/summary', async () => {
+    const db = getDb();
+
+    const [userCount] = await db.select({ count: count() }).from(users);
+    const [flagCount] = await db.select({ count: count() }).from(abuseFlags).where(eq(abuseFlags.resolved, 0));
+    const [logCount] = await db.select({ count: count() }).from(auditLogs);
+    const [usage] = await db
+      .select({
+        storage_used: sum(userUsageStats.storageUsed),
+        total_uploads: sum(userUsageStats.totalUploads),
+        total_downloads: sum(userUsageStats.totalDownloads),
+      })
+      .from(userUsageStats);
 
     return {
-      users: Number((users as any)?.count ?? 0),
-      openFlags: Number((flags as any)?.count ?? 0),
-      auditLogCount: Number((logs as any)?.count ?? 0),
-      storageUsed: Number((usage as any)?.storage_used ?? 0),
-      totalUploads: Number((usage as any)?.total_uploads ?? 0),
-      totalDownloads: Number((usage as any)?.total_downloads ?? 0),
+      users: userCount?.count ?? 0,
+      openFlags: flagCount?.count ?? 0,
+      auditLogCount: logCount?.count ?? 0,
+      storageUsed: Number(usage?.storage_used ?? 0),
+      totalUploads: Number(usage?.total_uploads ?? 0),
+      totalDownloads: Number(usage?.total_downloads ?? 0),
     };
   });
 
   // List all users with usage stats
-  fastify.get('/api/admin/users', async (request) => {
-    const db = getDatabase();
-    const users = await db.all(`
-      SELECT
-        u.id,
-        u.clerk_id,
-        u.onboarding_completed,
-        u.uploads_suspended,
-        u.created_at,
-        u.updated_at,
-        COALESCE(s.storage_used, 0) as storage_used,
-        COALESCE(s.file_count, 0) as file_count,
-        COALESCE(s.total_uploads, 0) as total_uploads,
-        COALESCE(s.total_downloads, 0) as total_downloads,
-        s.last_upload_at,
-        s.last_login_at,
-        (SELECT COUNT(*) FROM academic_sessions WHERE user_id = u.clerk_id) as session_count,
-        (SELECT COUNT(*) FROM abuse_flags WHERE user_id = u.clerk_id AND resolved = 0) as open_flags
-      FROM users u
-      LEFT JOIN user_usage_stats s ON s.user_id = u.clerk_id
-      ORDER BY u.created_at DESC
-    `);
+  fastify.get('/api/admin/users', async () => {
+    const db = getDb();
+    const result = await db
+      .select({
+        id: users.id,
+        clerk_id: users.clerkId,
+        onboarding_completed: users.onboardingCompleted,
+        uploads_suspended: users.uploadsSuspended,
+        created_at: users.createdAt,
+        updated_at: users.updatedAt,
+        storage_used: sql<number>`COALESCE(${userUsageStats.storageUsed}, 0)`,
+        file_count: sql<number>`COALESCE(${userUsageStats.fileCount}, 0)`,
+        total_uploads: sql<number>`COALESCE(${userUsageStats.totalUploads}, 0)`,
+        total_downloads: sql<number>`COALESCE(${userUsageStats.totalDownloads}, 0)`,
+        last_upload_at: userUsageStats.lastUploadAt,
+        last_login_at: userUsageStats.lastLoginAt,
+        session_count: sql<number>`(SELECT COUNT(*) FROM academic_sessions WHERE user_id = ${users.clerkId})`,
+        open_flags: sql<number>`(SELECT COUNT(*) FROM abuse_flags WHERE user_id = ${users.clerkId} AND resolved = 0)`,
+      })
+      .from(users)
+      .leftJoin(userUsageStats, eq(userUsageStats.userId, users.clerkId))
+      .orderBy(sql`${users.createdAt} DESC`);
 
-    return { users };
+    return { users: result };
   });
 
   // Audit logs
-  fastify.get('/api/admin/audit-logs', async (request) => {
-    const db = getDatabase();
-    const logs = await db.all(
-      'SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 50'
-    );
+  fastify.get('/api/admin/audit-logs', async () => {
+    const db = getDb();
+    const logs = await db
+      .select()
+      .from(auditLogs)
+      .orderBy(sql`${auditLogs.createdAt} DESC`)
+      .limit(50);
 
     return { logs };
   });
 
   // Abuse flags
-  fastify.get('/api/admin/abuse-flags', async (request) => {
-    const db = getDatabase();
-    const flags = await db.all(
-      'SELECT * FROM abuse_flags ORDER BY created_at DESC LIMIT 50'
-    );
+  fastify.get('/api/admin/abuse-flags', async () => {
+    const db = getDb();
+    const flags = await db
+      .select()
+      .from(abuseFlags)
+      .orderBy(sql`${abuseFlags.createdAt} DESC`)
+      .limit(50);
 
     return { flags };
   });
 
   // Resolve a flag
   fastify.post<{ Params: { id: string }; Body: { notes?: string } }>('/api/admin/flags/:id/resolve', async (request, reply) => {
-    const db = getDatabase();
-    const id = request.params.id;
-    const flag = await db.get('SELECT * FROM abuse_flags WHERE id = ?', [id]);
+    const db = getDb();
+    const [flag] = await db
+      .select()
+      .from(abuseFlags)
+      .where(eq(abuseFlags.id, Number(request.params.id)))
+      .limit(1);
 
     if (!flag) {
       return reply.status(404).send({ error: 'Flag not found' });
     }
 
-    await db.run(
-      'UPDATE abuse_flags SET resolved = 1, resolved_by = ?, notes = COALESCE(?, notes) WHERE id = ?',
-      [request.userId, (request.body as any)?.notes ?? null, id]
-    );
+    await db
+      .update(abuseFlags)
+      .set({
+        resolved: 1,
+        resolvedBy: request.userId,
+        notes: (request.body as any)?.notes ?? flag.notes,
+      })
+      .where(eq(abuseFlags.id, Number(request.params.id)));
 
     await writeAuditLog({
       userId: request.userId,
       action: 'admin_resolved_flag',
       resourceType: 'abuse_flag',
-      resourceId: id,
+      resourceId: request.params.id,
       ipAddress: request.ip,
       userAgent: request.headers['user-agent'],
-      metadata: { flagId: id },
+      metadata: { flagId: request.params.id },
     });
 
     return { success: true };
   });
 
   // Suspend uploads for a user
-  fastify.post<{ Params: { userId: string }; Body: { notes?: string } }>('/api/admin/users/:userId/suspend-uploads', async (request, reply) => {
-    const db = getDatabase();
+  fastify.post<{ Params: { userId: string }; Body: { notes?: string } }>('/api/admin/users/:userId/suspend-uploads', async (request) => {
+    const db = getDb();
     const userId = request.params.userId;
     const notes = (request.body as any)?.notes ?? 'Uploads suspended by admin';
 
-    // Actually set the suspended flag and reason
-    await db.run("UPDATE users SET uploads_suspended = 1, suspension_reason = ?, updated_at = datetime('now') WHERE clerk_id = ?", [notes, userId]);
+    await db
+      .update(users)
+      .set({
+        uploadsSuspended: 1,
+        suspensionReason: notes,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.clerkId, userId));
 
     await writeAuditLog({
       userId: request.userId,
@@ -131,13 +156,19 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   // Restore a user (unsuspend uploads)
-  fastify.post<{ Params: { userId: string }; Body: { notes?: string } }>('/api/admin/users/:userId/restore', async (request, reply) => {
-    const db = getDatabase();
+  fastify.post<{ Params: { userId: string }; Body: { notes?: string } }>('/api/admin/users/:userId/restore', async (request) => {
+    const db = getDb();
     const userId = request.params.userId;
     const notes = (request.body as any)?.notes ?? 'Account restored by admin';
 
-    // Clear the suspended flag and reason
-    await db.run("UPDATE users SET uploads_suspended = 0, suspension_reason = NULL, updated_at = datetime('now') WHERE clerk_id = ?", [userId]);
+    await db
+      .update(users)
+      .set({
+        uploadsSuspended: 0,
+        suspensionReason: null,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.clerkId, userId));
 
     await writeAuditLog({
       userId: request.userId,
@@ -150,5 +181,104 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     });
 
     return { success: true, userId, action: 'account_restored' };
-  });
+
+    // Storage health and stats
+    fastify.get('/api/admin/storage', async () => {
+      const db = getDb();
+      
+      // DB-level stats
+      const [usage] = await db
+        .select({
+          total_files: sum(userUsageStats.fileCount),
+          storage_used: sum(userUsageStats.storageUsed),
+        })
+        .from(userUsageStats);
+
+      const stats = {
+        totalFiles: Number(usage?.total_files ?? 0),
+        storageUsed: Number(usage?.storage_used ?? 0),
+        driver: process.env.STORAGE_DRIVER || 'mock',
+      };
+
+      // Check storage health using a non-intrusive method if possible
+      // Note: We avoid listing all files for privacy. We just return DB stats.
+      return { stats };
+    });
+
+    // SEO Settings Management
+    fastify.get('/api/admin/seo', async () => {
+      const db = getDb();
+      const settings = await db.select().from(siteSettings).where(sql`${siteSettings.key} LIKE 'seo.%'`);
+      const seo: Record<string, string> = {};
+      for (const s of settings) {
+        seo[s.key.replace('seo.', '')] = s.value;
+      }
+      return { seo };
+    });
+
+    fastify.post('/api/admin/seo', async (request, reply) => {
+      const db = getDb();
+      const data = request.body as Record<string, string>;
+      
+      await db.transaction(async (tx) => {
+        for (const [key, value] of Object.entries(data)) {
+          if (!key || typeof value !== 'string') continue;
+          const fullKey = `seo.${key}`;
+          
+          // Upsert setting
+          const [existing] = await tx.select().from(siteSettings).where(eq(siteSettings.key, fullKey)).limit(1);
+          if (existing) {
+            await tx.update(siteSettings).set({ value, updatedAt: new Date().toISOString() }).where(eq(siteSettings.key, fullKey));
+          } else {
+            await tx.insert(siteSettings).values({ key: fullKey, value, updatedAt: new Date().toISOString() });
+          }
+        }
+      });
+
+      await writeAuditLog({
+        userId: request.userId,
+        action: 'admin_updated_seo',
+        resourceType: 'site_settings',
+        resourceId: 'seo',
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+      });
+
+      return { success: true };
+    });
+
+    // Since OG Image is requested as upload, we would handle it via multipart
+    fastify.post('/api/admin/seo/og-image', async (request, reply) => {
+      const parts = request.parts();
+      let ogImageUrl = '';
+      
+      for await (const part of parts) {
+        if (part.type === 'file' && part.fieldname === 'image') {
+          const chunks: Buffer[] = [];
+          for await (const chunk of part.file) {
+            chunks.push(chunk);
+          }
+          const data = Buffer.concat(chunks);
+          
+          // Store the image in the configured storage under a public-accessible prefix if possible
+          if (storage) {
+            const key = `public/seo/og-image-${Date.now()}.${part.mimetype === 'image/png' ? 'png' : 'jpg'}`;
+            await storage.upload(key, data, part.mimetype);
+            ogImageUrl = `/api/public/storage/${key}`;
+            
+            const db = getDb();
+            const fullKey = 'seo.image';
+            const [existing] = await db.select().from(siteSettings).where(eq(siteSettings.key, fullKey)).limit(1);
+            if (existing) {
+              await db.update(siteSettings).set({ value: ogImageUrl, updatedAt: new Date().toISOString() }).where(eq(siteSettings.key, fullKey));
+            } else {
+              await db.insert(siteSettings).values({ key: fullKey, value: ogImageUrl, updatedAt: new Date().toISOString() });
+            }
+          }
+        }
+      }
+      
+      return { success: true, url: ogImageUrl };
+    });
+  };
 }

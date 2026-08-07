@@ -1,4 +1,6 @@
-import { getDatabase } from '../db/runtime.js';
+import { getDb } from '../db/runtime.js';
+import { auditLogs, users, abuseFlags } from '../db/schema.js';
+import { eq, and, gte, sql, count } from 'drizzle-orm';
 import { writeAuditLog } from './audit.service.js';
 
 export interface AbuseRuleResult {
@@ -13,30 +15,42 @@ export async function evaluateAbuseSignals(input: {
   ipAddress?: string;
   userAgent?: string;
 }): Promise<AbuseRuleResult> {
-  const db = getDatabase();
+  const db = getDb();
   const now = new Date();
   const windowStartUpload = new Date(now.getTime() - 60 * 1000).toISOString(); // 1 minute
   const windowStartLogin = new Date(now.getTime() - 60 * 60 * 1000).toISOString(); // 1 hour
 
   if (input.action === 'upload') {
-    const recentUploads = await db.get(
-      'SELECT COUNT(*) as count FROM audit_logs WHERE user_id = ? AND action = ? AND created_at >= ?',
-      [input.userId, 'file_uploaded', windowStartUpload]
-    ) as any;
+    const [result] = await db
+      .select({ count: count() })
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.userId, input.userId),
+          eq(auditLogs.action, 'file_uploaded'),
+          gte(auditLogs.createdAt, windowStartUpload),
+        ),
+      );
 
-    if (Number(recentUploads?.count ?? 0) >= 50) {
+    if ((result?.count ?? 0) >= 50) {
       await createAbuseFlag(input.userId, 'UPLOAD_SPAM', 'high', 'Upload burst detected', input.ipAddress, input.userAgent);
       return { flagged: true, reason: 'Upload burst detected', severity: 'high' };
     }
   }
 
   if (input.action === 'login') {
-    const recentFailures = await db.get(
-      'SELECT COUNT(*) as count FROM audit_logs WHERE user_id = ? AND action = ? AND created_at >= ?',
-      [input.userId, 'failed_login', windowStartLogin]
-    ) as any;
+    const [result] = await db
+      .select({ count: count() })
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.userId, input.userId),
+          eq(auditLogs.action, 'failed_login'),
+          gte(auditLogs.createdAt, windowStartLogin),
+        ),
+      );
 
-    if (Number(recentFailures?.count ?? 0) >= 5) {
+    if ((result?.count ?? 0) >= 5) {
       await createAbuseFlag(input.userId, 'LOGIN_ATTACK', 'high', 'Repeated failed login attempts', input.ipAddress, input.userAgent);
       return { flagged: true, reason: 'Repeated failed login attempts', severity: 'high' };
     }
@@ -53,19 +67,27 @@ async function createAbuseFlag(
   ipAddress?: string,
   userAgent?: string,
 ): Promise<void> {
-  const db = getDatabase();
-  await db.run(`
-    INSERT INTO abuse_flags (user_id, type, severity, reason, resolved, notes)
-    VALUES (?, ?, ?, ?, 0, ?)
-  `, [userId, type, severity, reason, JSON.stringify({ ipAddress, userAgent })]);
+  const db = getDb();
+
+  await db.insert(abuseFlags).values({
+    userId,
+    type,
+    severity,
+    reason,
+    resolved: 0,
+    notes: JSON.stringify({ ipAddress, userAgent }),
+  });
 
   if (severity === 'high') {
-    // Automatically freeze the user's account pending admin review
     const autoReason = 'System detected unusual activity. Your account has been temporarily restricted pending moderation review.';
-    await db.run(
-      "UPDATE users SET uploads_suspended = 1, suspension_reason = ?, updated_at = datetime('now') WHERE clerk_id = ?",
-      [autoReason, userId]
-    );
+    await db
+      .update(users)
+      .set({
+        uploadsSuspended: 1,
+        suspensionReason: autoReason,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.clerkId, userId));
   }
 
   await writeAuditLog({

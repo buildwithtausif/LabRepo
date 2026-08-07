@@ -1,0 +1,105 @@
+---
+import Layout from '../Layouts/Layout.astro'
+import { getAuth } from '@clerk/astro/server'
+
+const { userId } = getAuth(Astro.request)
+const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:3001'
+
+let apiStatus = 'unknown'
+let storageStatus = 'unknown'
+let dbStatus = 'unknown'
+let lastCheck = new Date().toISOString()
+
+try {
+  const res = await fetch(`${apiUrl}/health`, { timeout: 3000 } as any)
+  if (res.ok) {
+    const data = await res.json()
+    apiStatus = 'operational'
+    dbStatus = data.db || 'operational'
+    storageStatus = data.storage || 'operational'
+  } else {
+    apiStatus = 'degraded'
+  }
+} catch (e) {
+  apiStatus = 'down'
+  dbStatus = 'unknown'
+  storageStatus = 'unknown'
+}
+---
+
+<Layout title="System Status" seo={{ title: 'System Status', description: 'Check the real-time operational status of LabRepo services.' }}>
+  <div class="container py-8 max-w-4xl">
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold mb-2">System Status</h1>
+      <p class="text-muted">Current operational status of LabRepo services.</p>
+    </div>
+
+    <div class="status-board card mb-8 p-6">
+      <div class="flex items-center justify-between mb-6 pb-6 border-b border-[var(--color-divider)]">
+        <h2 class="text-lg font-medium">All Systems</h2>
+        {apiStatus === 'operational' ? (
+          <span class="badge badge--success px-3 py-1 text-sm"><i class="bi bi-check-circle-fill mr-2"></i> All Systems Operational</span>
+        ) : apiStatus === 'degraded' ? (
+          <span class="badge badge--warning px-3 py-1 text-sm"><i class="bi bi-exclamation-triangle-fill mr-2"></i> Partial Outage</span>
+        ) : (
+          <span class="badge badge--danger px-3 py-1 text-sm"><i class="bi bi-x-circle-fill mr-2"></i> Major Outage</span>
+        )}
+      </div>
+
+      <div class="status-list grid gap-4">
+        <div class="status-item flex items-center justify-between p-4 bg-[var(--color-surface)] rounded-xl">
+          <div class="flex items-center gap-3">
+            <i class="bi bi-server text-lg text-[var(--color-ink-muted)]"></i>
+            <div>
+              <div class="font-medium">API Services</div>
+              <div class="text-xs text-[var(--color-ink-muted)]">Core application endpoints</div>
+            </div>
+          </div>
+          <span class={`status-text ${apiStatus === 'operational' ? 'text-green-400' : 'text-red-400'}`}>
+            {apiStatus === 'operational' ? 'Operational' : 'Down'}
+          </span>
+        </div>
+
+        <div class="status-item flex items-center justify-between p-4 bg-[var(--color-surface)] rounded-xl">
+          <div class="flex items-center gap-3">
+            <i class="bi bi-database text-lg text-[var(--color-ink-muted)]"></i>
+            <div>
+              <div class="font-medium">Database</div>
+              <div class="text-xs text-[var(--color-ink-muted)]">Primary data store</div>
+            </div>
+          </div>
+          <span class={`status-text ${dbStatus === 'operational' ? 'text-green-400' : 'text-yellow-400'}`}>
+            {dbStatus === 'operational' ? 'Operational' : 'Degraded'}
+          </span>
+        </div>
+
+        <div class="status-item flex items-center justify-between p-4 bg-[var(--color-surface)] rounded-xl">
+          <div class="flex items-center gap-3">
+            <i class="bi bi-hdd-network text-lg text-[var(--color-ink-muted)]"></i>
+            <div>
+              <div class="font-medium">Storage Infrastructure</div>
+              <div class="text-xs text-[var(--color-ink-muted)]">File uploads and processing</div>
+            </div>
+          </div>
+          <span class={`status-text ${storageStatus === 'operational' ? 'text-green-400' : 'text-yellow-400'}`}>
+            {storageStatus === 'operational' ? 'Operational' : 'Degraded'}
+          </span>
+        </div>
+      </div>
+      
+      <div class="mt-6 pt-4 border-t border-[var(--color-divider)] text-xs text-[var(--color-ink-muted)] text-right">
+        Last updated: {new Date(lastCheck).toLocaleString()}
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .status-text {
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+  .text-green-400 { color: #4ade80; }
+  .text-yellow-400 { color: #facc15; }
+  .text-red-400 { color: #f87171; }
+</style>

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Build output
+dist/
+server/dist/
+.astro/
+
+# Environment (secrets)
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.github/
+.gitignore
+
+# Server data (dev only)
+server/data/
+
+# IDE
+.vscode/
+.idea/
+
+# Documentation / prompts
+*.md
+*.txt
+*.prompt.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker (prevent recursive copy)
+dockerfile*
+docker-compose*

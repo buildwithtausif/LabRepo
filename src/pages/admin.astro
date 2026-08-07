@@ -51,6 +51,7 @@ import { Show } from '@clerk/astro/components';
         <div class="admin-tabs mb-8">
           <button class="admin-tab active" data-tab="overview"><i class="bi bi-speedometer2"></i> Overview</button>
           <button class="admin-tab" data-tab="users"><i class="bi bi-people"></i> Users</button>
+          <button class="admin-tab" data-tab="seo"><i class="bi bi-search"></i> SEO Config</button>
           <button class="admin-tab" data-tab="learn"><i class="bi bi-book"></i> Learn</button>
         </div>
 
@@ -139,6 +140,53 @@ import { Show } from '@clerk/astro/components';
             </div>
             <div id="user-list-loading" class="admin-list__placeholder text-muted text-caption">Loading users...</div>
             <div id="user-list-container"></div>
+          </div>
+        </div>
+
+        <!-- ===== SEO CONFIG TAB ===== -->
+        <div id="tab-seo" class="admin-tab-content" style="display: none;">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="card p-6">
+              <h2 class="text-xl font-medium mb-4">Global SEO Settings</h2>
+              <form id="seo-form" class="flex flex-col gap-4">
+                <div class="form-group">
+                  <label for="seo-title" class="form-label">Default Title</label>
+                  <input type="text" id="seo-title" name="title" class="form-input" placeholder="e.g. LabRepo - Student Workspace" />
+                </div>
+                <div class="form-group">
+                  <label for="seo-description" class="form-label">Default Description</label>
+                  <textarea id="seo-description" name="description" class="form-input min-h-[100px]" placeholder="Site description for search engines"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="seo-twitter" class="form-label">Twitter Handle</label>
+                  <input type="text" id="seo-twitter" name="twitterHandle" class="form-input" placeholder="@labrepo" />
+                </div>
+                <button type="submit" class="btn btn--primary mt-2">Save Settings</button>
+              </form>
+            </div>
+
+            <div class="card p-6">
+              <h2 class="text-xl font-medium mb-4">Open Graph Image</h2>
+              <p class="text-muted text-sm mb-4">Upload a default social preview image (1200x630px recommended).</p>
+              
+              <div class="og-preview-card mb-6 border border-[var(--color-divider)] rounded-xl overflow-hidden bg-[var(--color-surface)]">
+                <div class="aspect-video bg-[var(--color-surface-hover)] relative" id="og-image-preview">
+                  <div class="absolute inset-0 flex items-center justify-center text-muted">No image uploaded</div>
+                </div>
+                <div class="p-4 border-t border-[var(--color-divider)]">
+                  <div class="text-xs text-muted mb-1 truncate" id="og-site-name">labrepo.example.com</div>
+                  <div class="font-medium truncate" id="og-preview-title">LabRepo - Student Workspace</div>
+                  <div class="text-sm text-muted line-clamp-2 mt-1" id="og-preview-desc">Safely organize and retrieve your college lab work. Never lose a file again.</div>
+                </div>
+              </div>
+
+              <form id="seo-image-form" class="flex flex-col gap-4">
+                <div class="form-group">
+                  <input type="file" id="seo-image" name="image" accept="image/jpeg, image/png" class="form-input text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-soft)] file:text-white hover:file:bg-[var(--color-primary)]" />
+                </div>
+                <button type="submit" class="btn btn--dark-utility">Upload Image</button>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -512,8 +560,103 @@ import { Show } from '@clerk/astro/components';
           return icons[action] || '<i class="bi bi-dot"></i>';
         }
 
+        // Load SEO data
+        async function loadSEOData() {
+          try {
+            const res = await api.get('/admin/seo');
+            if (res.seo) {
+              const titleInput = document.getElementById('seo-title') as HTMLInputElement;
+              const descInput = document.getElementById('seo-description') as HTMLTextAreaElement;
+              const twitterInput = document.getElementById('seo-twitter') as HTMLInputElement;
+              const ogPreviewTitle = document.getElementById('og-preview-title');
+              const ogPreviewDesc = document.getElementById('og-preview-desc');
+              const ogPreview = document.getElementById('og-image-preview');
+
+              if (res.seo.title) {
+                if (titleInput) titleInput.value = res.seo.title;
+                if (ogPreviewTitle) ogPreviewTitle.textContent = res.seo.title;
+              }
+              if (res.seo.description) {
+                if (descInput) descInput.value = res.seo.description;
+                if (ogPreviewDesc) ogPreviewDesc.textContent = res.seo.description;
+              }
+              if (res.seo.twitterHandle) {
+                if (twitterInput) twitterInput.value = res.seo.twitterHandle;
+              }
+              
+              if (res.seo.image && ogPreview) {
+                ogPreview.innerHTML = `<img src="${res.seo.image}" alt="OG Preview" class="w-full h-full object-cover" />`;
+              }
+            }
+          } catch (err) {
+            console.error('Failed to load SEO data', err);
+          }
+        }
+
+        // Handle SEO form submit
+        const seoForm = document.getElementById('seo-form');
+        if (seoForm) {
+          seoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+              const btn = (e.target as HTMLElement).querySelector('button');
+              if (btn) btn.disabled = true;
+              await api.post('/admin/seo', data);
+              showToast('SEO settings saved successfully', 'success');
+              loadSEOData();
+            } catch (err) {
+              showToast('Failed to save SEO settings', 'error');
+            } finally {
+              const btn = (e.target as HTMLElement).querySelector('button');
+              if (btn) btn.disabled = false;
+            }
+          });
+        }
+
+        // Handle OG image upload
+        const seoImageForm = document.getElementById('seo-image-form');
+        if (seoImageForm) {
+          seoImageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('seo-image') as HTMLInputElement;
+            const file = fileInput.files?.[0];
+            if (!file) return showToast('Please select an image first', 'error');
+            
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+              const btn = (e.target as HTMLElement).querySelector('button');
+              if (btn) btn.disabled = true;
+              
+              const token = await window.Clerk.session.getToken();
+              const res = await fetch(`${API_URL}/admin/seo/og-image`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData,
+              });
+              
+              if (res.ok) {
+                showToast('Image uploaded successfully', 'success');
+                loadSEOData();
+              } else {
+                throw new Error('Upload failed');
+              }
+            } catch (err) {
+              showToast('Failed to upload image', 'error');
+            } finally {
+              const btn = (e.target as HTMLElement).querySelector('button');
+              if (btn) btn.disabled = false;
+            }
+          });
+        }
+
         // Initial load
         await loadOverview();
+        await loadSEOData();
       });
     </script>
 
