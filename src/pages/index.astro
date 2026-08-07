@@ -1,6 +1,6 @@
 ---
 import Layout from "../Layouts/Layout.astro";
-import { Show } from "@clerk/astro/components";
+import { Show, SignUpButton } from "@clerk/astro/components";
 ---
 
 <Layout title="Your lab work, in one reliable place">
@@ -17,7 +17,9 @@ import { Show } from "@clerk/astro/components";
             <h1 class="text-hero">Your lab work,<br /><em>always within reach.</em></h1>
             <p class="hero-lead">A calm, secure workspace for the code, reports, notebooks, and datasets you build throughout the semester.</p>
             <div class="hero-actions">
-              <a href="#" id="hero-signup" class="btn btn--primary">Start your repository <i class="bi bi-arrow-right"></i></a>
+              <SignUpButton mode="modal" forceRedirectUrl="/dashboard" asChild={true}>
+                <a href="#" id="hero-signup" class="btn btn--primary">Start your repository <i class="bi bi-arrow-right"></i></a>
+              </SignUpButton>
               <a href="#how-it-works" class="text-link">See how it works <i class="bi bi-arrow-down"></i></a>
             </div>
             <div class="hero-proof">

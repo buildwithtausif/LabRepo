@@ -1,9 +1,7 @@
 ---
 import Layout from '../Layouts/Layout.astro'
-import { getAuth } from '@clerk/astro/server'
 
-const { userId } = getAuth(Astro.request)
-const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:3001'
+const apiUrl = process.env.INTERNAL_API_URL || import.meta.env.PUBLIC_API_URL || 'http://localhost:3001'
 
 let apiStatus = 'unknown'
 let storageStatus = 'unknown'
@@ -21,6 +19,7 @@ try {
     apiStatus = 'degraded'
   }
 } catch (e) {
+  console.error("Status page fetch error:", e)
   apiStatus = 'down'
   dbStatus = 'unknown'
   storageStatus = 'unknown'
@@ -28,66 +27,67 @@ try {
 ---
 
 <Layout title="System Status" seo={{ title: 'System Status', description: 'Check the real-time operational status of LabRepo services.' }}>
-  <div class="container py-8 max-w-4xl">
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold mb-2">System Status</h1>
-      <p class="text-muted">Current operational status of LabRepo services.</p>
+  <div class="container page-content">
+    <div class="page-header" style="margin-bottom: var(--space-6);">
+      <p class="dashboard-kicker">Status Board</p>
+      <h1 class="text-display-lg">System Status</h1>
+      <p class="text-muted" style="margin-top: 8px;">Current operational status of LabRepo services.</p>
     </div>
 
-    <div class="status-board card mb-8 p-6">
-      <div class="flex items-center justify-between mb-6 pb-6 border-b border-[var(--color-divider)]">
-        <h2 class="text-lg font-medium">All Systems</h2>
+    <div class="card" style="padding: 24px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-divider); padding-bottom: 24px; margin-bottom: 24px;">
+        <h2 class="text-body-strong">All Systems</h2>
         {apiStatus === 'operational' ? (
-          <span class="badge badge--success px-3 py-1 text-sm"><i class="bi bi-check-circle-fill mr-2"></i> All Systems Operational</span>
+          <span class="admin-badge admin-badge--success" style="font-size: 0.85rem;"><i class="bi bi-check-circle-fill"></i> All Systems Operational</span>
         ) : apiStatus === 'degraded' ? (
-          <span class="badge badge--warning px-3 py-1 text-sm"><i class="bi bi-exclamation-triangle-fill mr-2"></i> Partial Outage</span>
+          <span class="admin-badge admin-badge--warning" style="font-size: 0.85rem;"><i class="bi bi-exclamation-triangle-fill"></i> Partial Outage</span>
         ) : (
-          <span class="badge badge--danger px-3 py-1 text-sm"><i class="bi bi-x-circle-fill mr-2"></i> Major Outage</span>
+          <span class="admin-badge admin-badge--danger" style="font-size: 0.85rem;"><i class="bi bi-x-circle-fill"></i> Major Outage</span>
         )}
       </div>
 
-      <div class="status-list grid gap-4">
-        <div class="status-item flex items-center justify-between p-4 bg-[var(--color-surface)] rounded-xl">
-          <div class="flex items-center gap-3">
-            <i class="bi bi-server text-lg text-[var(--color-ink-muted)]"></i>
+      <div style="display: grid; gap: 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-divider);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="bi bi-server" style="font-size: 1.25rem; color: var(--color-ink-muted);"></i>
             <div>
-              <div class="font-medium">API Services</div>
-              <div class="text-xs text-[var(--color-ink-muted)]">Core application endpoints</div>
+              <div class="text-body-strong">API Services</div>
+              <div class="text-caption text-muted">Core application endpoints</div>
             </div>
           </div>
-          <span class={`status-text ${apiStatus === 'operational' ? 'text-green-400' : 'text-red-400'}`}>
+          <span style="font-weight: 500; font-size: 0.9rem;" class={apiStatus === 'operational' ? 'text-success' : 'text-danger'}>
             {apiStatus === 'operational' ? 'Operational' : 'Down'}
           </span>
         </div>
 
-        <div class="status-item flex items-center justify-between p-4 bg-[var(--color-surface)] rounded-xl">
-          <div class="flex items-center gap-3">
-            <i class="bi bi-database text-lg text-[var(--color-ink-muted)]"></i>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-divider);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="bi bi-database" style="font-size: 1.25rem; color: var(--color-ink-muted);"></i>
             <div>
-              <div class="font-medium">Database</div>
-              <div class="text-xs text-[var(--color-ink-muted)]">Primary data store</div>
+              <div class="text-body-strong">Database</div>
+              <div class="text-caption text-muted">Primary data store</div>
             </div>
           </div>
-          <span class={`status-text ${dbStatus === 'operational' ? 'text-green-400' : 'text-yellow-400'}`}>
+          <span style="font-weight: 500; font-size: 0.9rem;" class={dbStatus === 'operational' ? 'text-success' : 'text-warning'}>
             {dbStatus === 'operational' ? 'Operational' : 'Degraded'}
           </span>
         </div>
 
-        <div class="status-item flex items-center justify-between p-4 bg-[var(--color-surface)] rounded-xl">
-          <div class="flex items-center gap-3">
-            <i class="bi bi-hdd-network text-lg text-[var(--color-ink-muted)]"></i>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-divider);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="bi bi-hdd-network" style="font-size: 1.25rem; color: var(--color-ink-muted);"></i>
             <div>
-              <div class="font-medium">Storage Infrastructure</div>
-              <div class="text-xs text-[var(--color-ink-muted)]">File uploads and processing</div>
+              <div class="text-body-strong">Storage Infrastructure</div>
+              <div class="text-caption text-muted">File uploads and processing</div>
             </div>
           </div>
-          <span class={`status-text ${storageStatus === 'operational' ? 'text-green-400' : 'text-yellow-400'}`}>
+          <span style="font-weight: 500; font-size: 0.9rem;" class={storageStatus === 'operational' ? 'text-success' : 'text-warning'}>
             {storageStatus === 'operational' ? 'Operational' : 'Degraded'}
           </span>
         </div>
       </div>
       
-      <div class="mt-6 pt-4 border-t border-[var(--color-divider)] text-xs text-[var(--color-ink-muted)] text-right">
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--color-divider); text-align: right;" class="text-caption text-muted">
         Last updated: {new Date(lastCheck).toLocaleString()}
       </div>
     </div>
@@ -95,11 +95,7 @@ try {
 </Layout>
 
 <style>
-  .status-text {
-    font-weight: 500;
-    font-size: 0.9rem;
-  }
-  .text-green-400 { color: #4ade80; }
-  .text-yellow-400 { color: #facc15; }
-  .text-red-400 { color: #f87171; }
+  .text-success { color: var(--color-success); }
+  .text-warning { color: var(--color-warning); }
+  .text-danger { color: var(--color-danger); }
 </style>

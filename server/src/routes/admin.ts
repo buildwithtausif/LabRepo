@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { StorageAdapter } from '../storage/adapter.js';
 import { getDb } from '../db/runtime.js';
 import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings } from '../db/schema.js';
 import { writeAuditLog } from '../services/audit.service.js';
@@ -181,6 +182,7 @@ export function createAdminRoutes(storage: StorageAdapter) {
     });
 
     return { success: true, userId, action: 'account_restored' };
+  });
 
     // Storage health and stats
     fastify.get('/api/admin/storage', async () => {

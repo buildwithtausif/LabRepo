@@ -90,10 +90,10 @@ const seo = buildSEO(seoProps, currentPath)
 
           <div class="app-header__right">
             <Show when="signed-out">
-              <SignInButton mode="modal" asChild={true}>
+              <SignInButton mode="modal" forceRedirectUrl="/dashboard" asChild={true}>
                 <button class="btn btn--dark-utility">Sign In</button>
               </SignInButton>
-              <SignUpButton mode="modal" asChild={true}>
+              <SignUpButton mode="modal" forceRedirectUrl="/dashboard" asChild={true}>
                 <button class="btn btn--primary">Get Started</button>
               </SignUpButton>
             </Show>
@@ -139,6 +139,12 @@ const seo = buildSEO(seoProps, currentPath)
               <li>
                 <a href="/security-and-moderation">
                   Security &amp; Moderation
+                </a>
+              </li>
+              <li class="hide-mobile" aria-hidden="true">&bull;</li>
+              <li>
+                <a href="/status">
+                  System Status
                 </a>
               </li>
               <li class="hide-mobile" aria-hidden="true">&bull;</li>

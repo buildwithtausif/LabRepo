@@ -1,4 +1,5 @@
 version: "3.9"
+name: "labrepo"
 
 services:
   # ─── PostgreSQL ───────────────────────────────────
@@ -61,6 +62,10 @@ services:
       AWS_ENDPOINT: http://minio:9000
       API_PORT: "3001"
       API_HOST: "0.0.0.0"
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,7 +74,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -90,13 +95,18 @@ services:
     environment:
       HOST: "0.0.0.0"
       PORT: "4321"
+      INTERNAL_API_URL: "http://backend:3001"
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4321/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4321/"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -127,7 +137,7 @@ services:
       - internal
       - external
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
       interval: 15s
       timeout: 5s
       retries: 3

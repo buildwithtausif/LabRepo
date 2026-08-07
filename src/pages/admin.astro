@@ -145,46 +145,50 @@ import { Show } from '@clerk/astro/components';
 
         <!-- ===== SEO CONFIG TAB ===== -->
         <div id="tab-seo" class="admin-tab-content" style="display: none;">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="card p-6">
-              <h2 class="text-xl font-medium mb-4">Global SEO Settings</h2>
-              <form id="seo-form" class="flex flex-col gap-4">
-                <div class="form-group">
-                  <label for="seo-title" class="form-label">Default Title</label>
-                  <input type="text" id="seo-title" name="title" class="form-input" placeholder="e.g. LabRepo - Student Workspace" />
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 16px;">
+            <div class="admin-panel-section">
+              <div class="admin-panel-section__header">
+                <h2 class="text-body-strong"><i class="bi bi-globe"></i> Global SEO Settings</h2>
+              </div>
+              <form id="seo-form" style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                  <label for="seo-title" class="text-caption text-muted" style="display: block; margin-bottom: 6px;">Default Title</label>
+                  <input type="text" id="seo-title" name="title" class="input" style="width: 100%;" placeholder="e.g. LabRepo - Student Workspace" />
                 </div>
-                <div class="form-group">
-                  <label for="seo-description" class="form-label">Default Description</label>
-                  <textarea id="seo-description" name="description" class="form-input min-h-[100px]" placeholder="Site description for search engines"></textarea>
+                <div>
+                  <label for="seo-description" class="text-caption text-muted" style="display: block; margin-bottom: 6px;">Default Description</label>
+                  <textarea id="seo-description" name="description" class="input" style="width: 100%; min-height: 100px; resize: vertical;" placeholder="Site description for search engines"></textarea>
                 </div>
-                <div class="form-group">
-                  <label for="seo-twitter" class="form-label">Twitter Handle</label>
-                  <input type="text" id="seo-twitter" name="twitterHandle" class="form-input" placeholder="@labrepo" />
+                <div>
+                  <label for="seo-twitter" class="text-caption text-muted" style="display: block; margin-bottom: 6px;">Twitter Handle</label>
+                  <input type="text" id="seo-twitter" name="twitterHandle" class="input" style="width: 100%;" placeholder="@labrepo" />
                 </div>
-                <button type="submit" class="btn btn--primary mt-2">Save Settings</button>
+                <button type="submit" class="btn btn--primary" style="align-self: flex-start; margin-top: 8px;">Save Settings</button>
               </form>
             </div>
 
-            <div class="card p-6">
-              <h2 class="text-xl font-medium mb-4">Open Graph Image</h2>
-              <p class="text-muted text-sm mb-4">Upload a default social preview image (1200x630px recommended).</p>
+            <div class="admin-panel-section">
+              <div class="admin-panel-section__header">
+                <h2 class="text-body-strong"><i class="bi bi-image"></i> Open Graph Image</h2>
+              </div>
+              <p class="text-caption text-muted" style="margin-bottom: 16px;">Upload a default social preview image (1200x630px recommended).</p>
               
-              <div class="og-preview-card mb-6 border border-[var(--color-divider)] rounded-xl overflow-hidden bg-[var(--color-surface)]">
-                <div class="aspect-video bg-[var(--color-surface-hover)] relative" id="og-image-preview">
-                  <div class="absolute inset-0 flex items-center justify-center text-muted">No image uploaded</div>
+              <div class="og-preview-card" style="margin-bottom: 24px; border: 1px solid var(--color-divider); border-radius: 12px; overflow: hidden; background: var(--color-surface);">
+                <div style="aspect-ratio: 16/9; background: var(--color-surface-hover); position: relative; display: flex; align-items: center; justify-content: center; color: var(--color-ink-muted);" id="og-image-preview">
+                  No image uploaded
                 </div>
-                <div class="p-4 border-t border-[var(--color-divider)]">
-                  <div class="text-xs text-muted mb-1 truncate" id="og-site-name">labrepo.example.com</div>
-                  <div class="font-medium truncate" id="og-preview-title">LabRepo - Student Workspace</div>
-                  <div class="text-sm text-muted line-clamp-2 mt-1" id="og-preview-desc">Safely organize and retrieve your college lab work. Never lose a file again.</div>
+                <div style="padding: 16px; border-top: 1px solid var(--color-divider);">
+                  <div class="text-caption text-muted" id="og-site-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">labrepo.example.com</div>
+                  <div class="text-body-strong" id="og-preview-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">LabRepo - Student Workspace</div>
+                  <div class="text-caption text-muted" id="og-preview-desc" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Safely organize and retrieve your college lab work. Never lose a file again.</div>
                 </div>
               </div>
 
-              <form id="seo-image-form" class="flex flex-col gap-4">
-                <div class="form-group">
-                  <input type="file" id="seo-image" name="image" accept="image/jpeg, image/png" class="form-input text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-soft)] file:text-white hover:file:bg-[var(--color-primary)]" />
+              <form id="seo-image-form" style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                  <input type="file" id="seo-image" name="image" accept="image/jpeg, image/png" class="input" style="padding: 8px; width: 100%; cursor: pointer;" />
                 </div>
-                <button type="submit" class="btn btn--dark-utility">Upload Image</button>
+                <button type="submit" class="btn btn--dark-utility" style="align-self: flex-start;">Upload Image</button>
               </form>
             </div>
           </div>
