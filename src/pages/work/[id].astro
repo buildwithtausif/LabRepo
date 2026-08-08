@@ -165,7 +165,7 @@ const { id } = Astro.params;
               renderFiles(files);
             }
 
-            const totalSize = files.reduce((a: number, f: any) => a + f.size_bytes, 0);
+            const totalSize = files.reduce((a: number, f: any) => a + (f.sizeBytes || 0), 0);
             document.getElementById('work-stats')!.textContent = 
               `${files.length} file${files.length !== 1 ? 's' : ''} · ${formatSize(totalSize)}`;
           } catch (e: any) {
@@ -188,8 +188,8 @@ const { id } = Astro.params;
                       <div class="text-body-strong truncate">${file.filename}</div>
                       <div class="flex gap-4 items-center text-caption text-muted mt-1 flex-wrap">
                         <span class="btn--dark-utility p-1 rounded">.${file.extension}</span>
-                        <span>${formatSize(file.size_bytes)}</span>
-                        <span>${formatRelativeTime(file.created_at)}</span>
+                        <span>${formatSize(file.sizeBytes || 0)}</span>
+                        <span>${formatRelativeTime(file.createdAt)}</span>
                       </div>
                     </div>
                   </div>

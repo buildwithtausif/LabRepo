@@ -49,7 +49,14 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
         .where(eq(subjects.sessionId, Number(request.params.sessionId)))
         .orderBy(subjects.name);
 
-      return { subjects: result };
+      return { 
+        subjects: result.map(s => ({
+          ...s,
+          work_count: Number(s.work_count || 0),
+          file_count: Number(s.file_count || 0),
+          total_size: Number(s.total_size || 0)
+        }))
+      };
     },
   );
 
@@ -81,7 +88,14 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.status(404).send({ error: 'Subject not found' });
     }
 
-    return { subject };
+    return { 
+      subject: {
+        ...subject,
+        work_count: Number(subject.work_count || 0),
+        file_count: Number(subject.file_count || 0),
+        total_size: Number(subject.total_size || 0)
+      }
+    };
   });
 
   // Create subject

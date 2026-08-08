@@ -262,10 +262,10 @@ const isAdmin = userId === process.env.ADMIN_USER_ID || userId === process.env.C
                 </div>
               </div>
               ${
-                session.auto_delete
+                session.autoDelete
                   ? `
                 <div class="dashboard-session-card__footer text-caption text-muted">
-                  <span><i class="bi bi-clock-history"></i> Auto-delete: ${session.auto_delete_date || "enabled"}</span>
+                  <span><i class="bi bi-clock-history"></i> Auto-delete: ${session.autoDeleteDate || "enabled"}</span>
                   <i class="bi bi-arrow-up-right"></i>
                 </div>
               `

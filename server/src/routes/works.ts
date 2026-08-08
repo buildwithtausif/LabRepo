@@ -47,7 +47,13 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
         .where(eq(works.subjectId, Number(request.params.subjectId)))
         .orderBy(sql`${works.createdAt} DESC`);
 
-      return { works: result };
+      return { 
+        works: result.map(w => ({
+          ...w,
+          file_count: Number(w.file_count || 0),
+          total_size: Number(w.total_size || 0)
+        }))
+      };
     },
   );
 
@@ -82,7 +88,13 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.status(404).send({ error: 'Work not found' });
     }
 
-    return { work };
+    return { 
+      work: {
+        ...work,
+        file_count: Number(work.file_count || 0),
+        total_size: Number(work.total_size || 0)
+      }
+    };
   });
 
   // Create work

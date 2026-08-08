@@ -1,18 +1,50 @@
+# Dockerfile.vercel
+# This Dockerfile is intended for deploying the entire LabRepo application (Frontend + Backend) 
+# as a single Vercel Function.
+# Vercel provides the $PORT environment variable automatically (default 80), and this container 
+# will proxy traffic between the frontend (Astro) and the backend (Fastify).
+
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# 1. Install dependencies for the frontend
 COPY package.json package-lock.json ./
-
-# Install dependencies
 RUN npm ci
 
-# Copy the rest of the application
+# 2. Install dependencies for the backend
+COPY server/package.json server/package-lock.json ./server/
+RUN cd server && npm ci
+
+# 3. Copy source code
 COPY . .
 
-# Build the Astro project
+# 4. Build Astro frontend
 RUN npm run build
+
+# 5. Build Fastify backend
+RUN cd server && npm run build
+
+# 6. Set up a simple Node proxy router to serve on the Vercel $PORT
+RUN echo "const http = require('http');\n\
+const httpProxy = require('http-proxy');\n\
+const proxy = httpProxy.createProxyServer({});\n\
+const server = http.createServer((req, res) => {\n\
+  if (req.url.startsWith('/api') || req.url.startsWith('/assets/avatar/')) {\n\
+    proxy.web(req, res, { target: 'http://127.0.0.1:3001' }, (err) => {\n\
+      res.writeHead(502); res.end('Backend not ready');\n\
+    });\n\
+  } else {\n\
+    proxy.web(req, res, { target: 'http://127.0.0.1:4321' }, (err) => {\n\
+      res.writeHead(502); res.end('Frontend not ready');\n\
+    });\n\
+  }\n\
+});\n\
+const port = process.env.PORT || 80;\n\
+server.listen(port, () => console.log('Vercel Router proxying on port ' + port));" > proxy.js
+
+# Install proxy dependencies
+RUN npm install http-proxy concurrently
 
 # Runtime stage
 FROM node:22-alpine AS runtime
@@ -23,11 +55,17 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/proxy.js ./proxy.js
+COPY --from=builder /app/server/node_modules ./server/node_modules
+COPY --from=builder /app/server/dist ./server/dist
+COPY --from=builder /app/server/package.json ./server/package.json
+COPY --from=builder /app/server/drizzle ./server/drizzle
 
-# Environment variables
-# Vercel and similar serverless/edge environments typically provide their own PORT dynamically.
-# We set HOST to 0.0.0.0 so the server listens on all network interfaces.
-ENV HOST=0.0.0.0
+# Expose port (Vercel overrides this dynamically)
+EXPOSE 80
 
-# Start the server (Astro's standalone Node server automatically listens on process.env.PORT)
-CMD ["node", "./dist/server/entry.mjs"]
+# Run everything concurrently (backend on 3001, frontend on 4321, proxy on PORT)
+CMD ["npx", "concurrently", \
+  "API_PORT=3001 API_HOST=127.0.0.1 node server/dist/index.js", \
+  "PORT=4321 HOST=127.0.0.1 node ./dist/server/entry.mjs", \
+  "node proxy.js"]

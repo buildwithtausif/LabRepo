@@ -125,7 +125,13 @@ export async function searchRoutes(fastify: FastifyInstance): Promise<void> {
       .orderBy(sql`${works.updatedAt} DESC`)
       .limit(50);
 
-    return { files: results, works: workResults };
+    return { 
+      files: results, 
+      works: workResults.map(w => ({
+        ...w,
+        file_count: Number(w.file_count || 0)
+      }))
+    };
   });
 
   // Get available filter options

@@ -37,7 +37,13 @@ export async function sessionRoutes(fastify: FastifyInstance): Promise<void> {
       .where(eq(academicSessions.userId, request.userId))
       .orderBy(sql`${academicSessions.createdAt} DESC`);
 
-    return { sessions };
+    return { 
+      sessions: sessions.map(s => ({
+        ...s,
+        subject_count: Number(s.subject_count || 0),
+        file_count: Number(s.file_count || 0)
+      }))
+    };
   });
 
   // Get a single session
@@ -67,7 +73,13 @@ export async function sessionRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.status(404).send({ error: 'Session not found' });
     }
 
-    return { session };
+    return { 
+      session: {
+        ...session,
+        subject_count: Number(session.subject_count || 0),
+        file_count: Number(session.file_count || 0)
+      }
+    };
   });
 
   // Create academic session
