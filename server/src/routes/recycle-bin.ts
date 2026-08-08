@@ -130,15 +130,31 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
         }
 
         const filesToDelete = extractFiles(item.itemType, data);
+        let storageDelta = 0;
+        let fileDelta = 0;
+
         for (const file of filesToDelete) {
           try {
             await storage.delete(file.storageKey || file.storage_key);
+            storageDelta -= (file.sizeBytes || file.size_bytes || 0);
+            fileDelta -= 1;
           } catch (error) {
             console.error(`Failed to delete file from storage: ${file.storageKey || file.storage_key}`, error);
+            storageDelta -= (file.sizeBytes || file.size_bytes || 0);
+            fileDelta -= 1;
           }
         }
 
         await db.delete(recycleBin).where(eq(recycleBin.id, item.id));
+
+        if (storageDelta < 0 || fileDelta < 0) {
+          await updateUserUsage({
+            userId: request.userId,
+            storageDelta,
+            fileDelta,
+          });
+        }
+
         return { success: true, message: 'Permanently deleted' };
       },
     );

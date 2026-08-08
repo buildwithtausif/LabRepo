@@ -107,6 +107,32 @@ import { Show } from '@clerk/astro/components';
             </div>
           </div>
 
+          <!-- Lifetime stats row -->
+          <h3 class="text-body-strong" style="margin-top: 2rem; margin-bottom: 1.25rem;">Lifetime System Stats</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div class="admin-stat-card admin-stat-card--compact">
+              <i class="bi bi-people-fill text-muted"></i>
+              <div>
+                <p class="text-caption text-muted">All Registered Users</p>
+                <p class="admin-stat-card__value admin-stat-card__value--sm" id="lifetime-users">—</p>
+              </div>
+            </div>
+            <div class="admin-stat-card admin-stat-card--compact">
+              <i class="bi bi-cloud-arrow-up-fill text-muted"></i>
+              <div>
+                <p class="text-caption text-muted">Lifetime Uploads</p>
+                <p class="admin-stat-card__value admin-stat-card__value--sm" id="lifetime-uploads">—</p>
+              </div>
+            </div>
+            <div class="admin-stat-card admin-stat-card--compact">
+              <i class="bi bi-cloud-arrow-down-fill text-muted"></i>
+              <div>
+                <p class="text-caption text-muted">Lifetime Downloads</p>
+                <p class="admin-stat-card__value admin-stat-card__value--sm" id="lifetime-downloads">—</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Audit + Flags columns -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
             <section class="admin-panel-section">
@@ -496,6 +522,10 @@ import { Show } from '@clerk/astro/components';
             document.getElementById("storage-used")!.textContent = formatSize(summary.storageUsed || 0);
             document.getElementById("total-uploads")!.textContent = String(summary.totalUploads || 0);
             document.getElementById("total-downloads")!.textContent = String(summary.totalDownloads || 0);
+            
+            document.getElementById("lifetime-users")!.textContent = String(summary.lifetimeUsers || 0);
+            document.getElementById("lifetime-uploads")!.textContent = String(summary.lifetimeUploads || 0);
+            document.getElementById("lifetime-downloads")!.textContent = String(summary.lifetimeDownloads || 0);
 
             // Load audit logs
             const logsRes = await api.getAuditLogs();

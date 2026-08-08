@@ -2,6 +2,7 @@ import { getDb } from '../db/runtime.js';
 import { recycleBin, academicSessions, subjects, works, files } from '../db/schema.js';
 import type { StorageAdapter } from '../storage/adapter.js';
 import { eq, lte, and, sql } from 'drizzle-orm';
+import { updateUserUsage } from '../services/usage.service.js';
 
 /**
  * Cleanup job — runs periodically to:
@@ -37,15 +38,30 @@ async function runCleanup(storage: StorageAdapter): Promise<void> {
     }
 
     const filesToDelete = extractAllFiles(item.itemType, data);
+    let storageDelta = 0;
+    let fileDelta = 0;
+
     for (const file of filesToDelete) {
       try {
         await storage.delete(file.storage_key || file.storageKey);
+        storageDelta -= (file.sizeBytes || file.size_bytes || 0);
+        fileDelta -= 1;
       } catch (err) {
         console.error(`Failed to delete storage key ${file.storage_key || file.storageKey}:`, err);
+        storageDelta -= (file.sizeBytes || file.size_bytes || 0);
+        fileDelta -= 1;
       }
     }
 
     await db.delete(recycleBin).where(eq(recycleBin.id, item.id));
+
+    if (storageDelta < 0 || fileDelta < 0) {
+      await updateUserUsage({
+        userId: item.userId,
+        storageDelta,
+        fileDelta,
+      });
+    }
   }
 
   if (expiredItems.length > 0) {

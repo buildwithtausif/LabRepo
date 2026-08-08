@@ -157,9 +157,8 @@ const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === pr
       <slot />
     </main>
 
-    <!-- Footer for landing page -->
-    {currentPath === '/' && (
-      <footer class="app-footer">
+    <!-- Global Footer -->
+    <footer class="app-footer">
         <div class="container text-center flex flex-col items-center gap-4">
           <nav aria-label="Footer Navigation">
             <ul class="footer-links">
@@ -172,6 +171,12 @@ const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === pr
               <li>
                 <a href="/security-and-moderation">
                   Security &amp; Moderation
+                </a>
+              </li>
+              <li class="hide-mobile" aria-hidden="true">&bull;</li>
+              <li>
+                <a href="/policy">
+                  Policy
                 </a>
               </li>
               <li class="hide-mobile" aria-hidden="true">&bull;</li>
@@ -191,7 +196,6 @@ const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === pr
           <p class="text-caption text-muted">&copy; 2026 LabRepo. All rights reserved.</p>
         </div>
       </footer>
-    )}
 
     <script src="../scripts/api.ts"></script>
   </body>
@@ -338,9 +342,7 @@ const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === pr
   
   /* Footer */
   .app-footer {
-    padding: 40px 0;
-    border-top: 1px solid var(--color-divider);
-    background-color: rgba(0,0,0,.18);
+    padding: 32px 0;
   }
 
   .footer-links {

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { StorageAdapter } from '../storage/adapter.js';
 import { getDb } from '../db/runtime.js';
-import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings, files, works, subjects, recycleBin } from '../db/schema.js';
+import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings, files, works, subjects, recycleBin, dailyUsageHistory } from '../db/schema.js';
 import { writeAuditLog } from '../services/audit.service.js';
 import { eq, sql, count, sum } from 'drizzle-orm';
 
@@ -24,6 +24,26 @@ export function createAdminRoutes(storage: StorageAdapter) {
     const [userCount] = await db.select({ count: count() }).from(users);
     const [flagCount] = await db.select({ count: count() }).from(abuseFlags).where(eq(abuseFlags.resolved, 0));
     const [logCount] = await db.select({ count: count() }).from(auditLogs);
+
+    // Auto-heal usage stats to fix any existing desyncs
+    const allUsers = await db.select({ id: users.clerkId }).from(users);
+    for (const u of allUsers) {
+      const [fileStats] = await db
+        .select({
+          totalSize: sql<number>`COALESCE(SUM(${files.sizeBytes}), 0)`,
+          count: sql<number>`COUNT(${files.id})`
+        })
+        .from(files)
+        .where(eq(files.userId, u.id));
+        
+      await db
+        .update(userUsageStats)
+        .set({
+          storageUsed: Number(fileStats.totalSize),
+          fileCount: Number(fileStats.count)
+        })
+        .where(eq(userUsageStats.userId, u.id));
+    }
     const [usage] = await db
       .select({
         storage_used: sum(userUsageStats.storageUsed),
@@ -32,6 +52,14 @@ export function createAdminRoutes(storage: StorageAdapter) {
       })
       .from(userUsageStats);
 
+    const [lifetime] = await db
+      .select({
+        total_users_ever: sql<number>`COUNT(DISTINCT ${dailyUsageHistory.userId})`,
+        lifetime_uploads: sum(dailyUsageHistory.uploads),
+        lifetime_downloads: sum(dailyUsageHistory.downloads),
+      })
+      .from(dailyUsageHistory);
+
     return {
       users: userCount?.count ?? 0,
       openFlags: flagCount?.count ?? 0,
@@ -39,6 +67,9 @@ export function createAdminRoutes(storage: StorageAdapter) {
       storageUsed: Number(usage?.storage_used ?? 0),
       totalUploads: Number(usage?.total_uploads ?? 0),
       totalDownloads: Number(usage?.total_downloads ?? 0),
+      lifetimeUsers: Number(lifetime?.total_users_ever ?? 0),
+      lifetimeUploads: Number(lifetime?.lifetime_uploads ?? 0),
+      lifetimeDownloads: Number(lifetime?.lifetime_downloads ?? 0),
     };
   });
 

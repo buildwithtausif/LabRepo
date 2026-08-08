@@ -13,7 +13,7 @@ import Layout from '../Layouts/Layout.astro';
 
       <section class="security-grid" aria-label="Moderation details">
         <article class="security-item">
-          <h2 class="security-item__title">Upload Limits &amp; Bursts</h2>
+          <h2 class="security-item__title"><i class="bi bi-speedometer2 mr-2"></i> Upload Limits &amp; Bursts</h2>
           <p class="security-item__copy">To ensure fair usage, we enforce two distinct upload constraints:</p>
           <ul class="security-item__list">
             <li><strong>Rate Limit (20/min):</strong> A standard API rate limit that blocks the 21st upload attempt within a single minute. This simply returns a "Too Many Requests" error to pace your uploads.</li>
@@ -22,21 +22,22 @@ import Layout from '../Layouts/Layout.astro';
         </article>
 
         <article class="security-item">
-          <h2 class="security-item__title">Account Suspensions</h2>
-          <p class="security-item__copy">Accounts flagged for abusive behavior (such as extreme upload bursts or repeated login attacks) may have their upload privileges suspended by an administrator.</p>
-          <ul class="security-item__list">
-            <li><strong>If Suspended:</strong> You will retain read-only access to view and download your existing files, but you cannot upload new files. A reason for the suspension will be displayed on your dashboard.</li>
-            <li><strong>Appeals:</strong> If you believe your suspension was a mistake, you can contact support with your User ID to request a manual review and restoration of privileges.</li>
+          <h2 class="security-item__title"><i class="bi bi-slash-circle mr-2 text-danger"></i> Account Suspensions</h2>
+          <p class="security-item__copy">Accounts flagged for abusive behavior (such as extreme upload bursts or repeated login attacks) may be suspended by an administrator.</p>
+          <ul class="security-item__list" style="list-style-type: none; padding-left: 0;">
+            <li class="mb-2"><i class="bi bi-shield-lock text-primary mr-2"></i> <strong>If Suspended:</strong> You will retain read-only access to view and download your existing files. However, you will be blocked from creating new sessions, subjects, and works, uploading new files, or modifying and deleting any existing data. A reason for the suspension will be displayed on your dashboard.</li>
+            <li class="mb-2"><i class="bi bi-envelope text-primary mr-2"></i> <strong>Appeals:</strong> If you believe your suspension was a mistake, you can contact support with your User ID to request a manual review and restoration of privileges.</li>
+            <li><i class="bi bi-exclamation-triangle text-danger mr-2"></i> <strong>Hard Deletion:</strong> Suspended accounts that violate our most severe policies may be subjected to a Hard Delete by administrators. This irrevocably wipes all files and data associated with the account from the platform.</li>
           </ul>
         </article>
 
         <article class="security-item">
-          <h2 class="security-item__title">Why we log activity</h2>
+          <h2 class="security-item__title"><i class="bi bi-journal-text mr-2"></i> Why we log activity</h2>
           <p class="security-item__copy">We record key events such as logins, uploads, downloads, and admin actions so we can investigate issues, identify malicious actors, and maintain a secure history.</p>
         </article>
 
         <article class="security-item">
-          <h2 class="security-item__title">Your privacy</h2>
+          <h2 class="security-item__title"><i class="bi bi-shield-check mr-2 text-success"></i> Your privacy</h2>
           <p class="security-item__copy">Private security data and metadata (like file size and names) are stored server-side and never sold. We do not inspect the contents of your academic files.</p>
         </article>
       </section>
