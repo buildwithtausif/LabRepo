@@ -1,16 +1,15 @@
 ---
 import Layout from "../Layouts/Layout.astro";
-import { Show } from "@clerk/astro/components";
+
+const { userId } = Astro.locals.auth();
+if (!userId) {
+  return Astro.redirect("/");
+}
+
+const isAdmin = userId === process.env.ADMIN_USER_ID || userId === process.env.CLERK_ADMIN_USER_ID;
 ---
 
 <Layout title="Dashboard">
-  <Show when="signed-out">
-    <script>
-      window.location.href = "/";
-    </script>
-  </Show>
-
-  <Show when="signed-in">
     <div class="container page-content" id="dashboard-page">
       <!-- Loading state -->
       <div id="dashboard-loading" class="empty-state">
@@ -50,7 +49,12 @@ import { Show } from "@clerk/astro/components";
                 <h1 class="text-display-lg hide-desktop">Dashboard</h1>
                 <p class="text-muted" id="stats-line">Your lab work repository</p>
               </div>
-              <div class="flex gap-4 flex-wrap dashboard-actions">
+              <div class="flex gap-4 flex-wrap dashboard-actions items-center">
+              {isAdmin && (
+                <a href="/admin" class="btn btn--dark-utility border border-[#ffd700] text-[#ffd700] hover:bg-[#ffd700] hover:text-black transition-colors" title="Open Admin Panel">
+                  <i class="bi bi-shield-shaded mr-2"></i> Open Admin
+                </a>
+              )}
             <button
               class="btn btn--secondary-pill"
               id="btn-download-all"
@@ -165,7 +169,8 @@ import { Show } from "@clerk/astro/components";
         // Wait for Clerk to be ready
         await new Promise<void>((resolve) => {
           const check = () => {
-            if ((window as any).Clerk && (window as any).Clerk.isReady()) resolve();
+            const c = (window as any).Clerk;
+            if (c && (typeof c.isReady === 'function' ? c.isReady() : c.loaded)) resolve();
             else setTimeout(check, 100);
           };
           check();
@@ -500,5 +505,4 @@ import { Show } from "@clerk/astro/components";
         .dashboard-main #sessions-empty { min-height: 360px; }
       }
     </style>
-  </Show>
 </Layout>

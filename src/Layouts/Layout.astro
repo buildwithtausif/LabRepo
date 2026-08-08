@@ -14,6 +14,10 @@ const currentPath = Astro.url.pathname
 const seoProps = { ...customSeo }
 if (title) seoProps.title = title
 const seo = buildSEO(seoProps, currentPath)
+
+const auth = Astro.locals.auth ? Astro.locals.auth() : null;
+const userId = auth ? auth.userId : null;
+const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === process.env.CLERK_ADMIN_USER_ID);
 ---
 
 <!doctype html>
@@ -61,6 +65,28 @@ const seo = buildSEO(seoProps, currentPath)
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
     <script is:inline defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script is:inline defer src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+    <style>
+      .hawkins-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #d4af37 0%, #ffdf73 50%, #d4af37 100%);
+        color: #1a1a1a;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        box-shadow: 0 2px 8px rgba(212, 175, 55, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+        border: 1px solid #ffe699;
+        user-select: none;
+        margin-right: 12px;
+      }
+      .hawkins-badge i {
+        font-size: 0.9rem;
+      }
+    </style>
   </head>
   <body>
     {showNav && (
@@ -98,7 +124,14 @@ const seo = buildSEO(seoProps, currentPath)
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <UserButton />
+              <div style="display: flex; align-items: center;">
+                {isAdmin && (
+                  <div class="hawkins-badge" title="Hawkins Chief of Police (Admin)">
+                    <i class="bi bi-star-fill"></i> Chief
+                  </div>
+                )}
+                <UserButton />
+              </div>
             </Show>
           </div>
         </div>

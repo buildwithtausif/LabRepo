@@ -5,6 +5,8 @@ import icon from "astro-icon";
 
 import react from "@astrojs/react";
 
+import tailwindcss from "@tailwindcss/vite";
+
 export default defineConfig({
   integrations: [clerk(), icon(), react()],
   adapter: node({ mode: "standalone" }),
@@ -18,5 +20,7 @@ export default defineConfig({
         },
       },
     },
+
+    plugins: [tailwindcss()],
   },
 });

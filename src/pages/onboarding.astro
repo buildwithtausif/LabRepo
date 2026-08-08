@@ -1,14 +1,13 @@
 ---
 import Layout from '../Layouts/Layout.astro'
-import { Show } from '@clerk/astro/components'
+
+const { userId } = Astro.locals.auth();
+if (!userId) {
+  return Astro.redirect("/");
+}
 ---
 
 <Layout title="Welcome to LabRepo" showNav={false}>
-  <Show when="signed-out">
-    <script>window.location.href = '/';</script>
-  </Show>
-
-  <Show when="signed-in">
     <div class="onboarding bg-canvas" id="onboarding">
       <!-- Progress bar -->
       <div class="onboarding__progress bg-canvas">
@@ -274,7 +273,8 @@ import { Show } from '@clerk/astro/components'
         // Wait for Clerk
         await new Promise<void>((resolve) => {
           const check = () => {
-            if ((window as any).Clerk && (window as any).Clerk.isReady()) resolve();
+            const c = (window as any).Clerk;
+            if (c && (typeof c.isReady === 'function' ? c.isReady() : c.loaded)) resolve();
             else setTimeout(check, 100);
           };
           check();
@@ -621,5 +621,4 @@ import { Show } from '@clerk/astro/components'
         }
       }
     </style>
-  </Show>
 </Layout>

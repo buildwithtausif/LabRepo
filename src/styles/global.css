@@ -1,3 +1,4 @@
+@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Poppins:wght@400;500;600;700&display=swap");
 
 :root {
@@ -142,3 +143,5 @@ select.input { appearance: auto; color-scheme: dark; cursor: pointer; }
 @media (min-width: 768px) { .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }.md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }.hide-desktop { display: none !important; } }
 @media (min-width: 1024px) { .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }.lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }.lg\:flex { display: flex; }.lg\:gap-16 { gap: 64px; } }
 @media (max-width: 767px) { .hide-mobile { display: none !important; }.container, .container--narrow { width: min(100% - 28px, 1240px); }.page-content { padding-block: 30px 88px; }.page-header { flex-direction: column; align-items: flex-start !important; }.page-header > .flex { width: 100%; }.page-header .btn { flex: 1; }.store-utility-card { padding: 18px; }.modal-overlay { padding: 14px; }.modal { padding: 22px; }.empty-state { min-height: 310px; padding: 42px 10px; } }
+
+

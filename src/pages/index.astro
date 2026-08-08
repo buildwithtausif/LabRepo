@@ -1,14 +1,14 @@
 ---
 import Layout from "../Layouts/Layout.astro";
-import { Show, SignUpButton } from "@clerk/astro/components";
+import { SignUpButton } from "@clerk/astro/components";
+
+const { userId } = Astro.locals.auth();
+if (userId) {
+  return Astro.redirect("/dashboard");
+}
 ---
 
 <Layout title="Your lab work, in one reliable place">
-  <Show when="signed-in">
-    <script>window.location.href = "/dashboard";</script>
-  </Show>
-
-  <Show when="signed-out">
     <div class="landing">
       <section class="hero-section">
         <div class="container hero-grid">
@@ -73,7 +73,6 @@ import { Show, SignUpButton } from "@clerk/astro/components";
 
       <section class="final-cta"><div class="container container--narrow"><p class="eyebrow">YOUR NEXT PRACTICAL STARTS HERE</p><h2 class="text-display-lg">Build your repository before you need to recover it.</h2><p>Set up your workspace in under a minute. Your first session is waiting.</p><a href="#" id="cta-signup" class="btn btn--primary">Create free workspace <i class="bi bi-arrow-right"></i></a></div></section>
     </div>
-  </Show>
 </Layout>
 
 <script>

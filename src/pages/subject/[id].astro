@@ -1,16 +1,15 @@
 ---
 import Layout from '../../Layouts/Layout.astro'
-import { Show } from '@clerk/astro/components'
+
+const { userId } = Astro.locals.auth();
+if (!userId) {
+  return Astro.redirect("/");
+}
 
 const { id } = Astro.params;
 ---
 
 <Layout title="Subject">
-  <Show when="signed-out">
-    <script>window.location.href = '/';</script>
-  </Show>
-
-  <Show when="signed-in">
     <div class="container page-content" id="subject-page" data-subject-id={id}>
       <div id="page-loading" class="empty-state">
         <div class="spinner spinner--lg"></div>
@@ -408,5 +407,4 @@ const { id } = Astro.params;
         .card-actions { opacity: 1; }
       }
     </style>
-  </Show>
 </Layout>

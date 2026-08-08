@@ -5,6 +5,7 @@ import type { StorageAdapter } from '../storage/adapter.js';
 import { updateUserUsage } from '../services/usage.service.js';
 import { eq, and, lte, sql } from 'drizzle-orm';
 import type { Database } from '../db/runtime.js';
+import { requireNotSuspended } from '../auth/suspension.js';
 
 export function createRecycleBinRoutes(storage: StorageAdapter) {
   return async function recycleBinRoutes(fastify: FastifyInstance): Promise<void> {
@@ -54,6 +55,8 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
     fastify.post<{ Params: { id: string } }>(
       '/api/recycle-bin/:id/restore',
       async (request, reply) => {
+        if (await requireNotSuspended(request, reply)) return;
+
         const db = getDb();
         const [item] = await db
           .select()
@@ -103,6 +106,8 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
     fastify.delete<{ Params: { id: string } }>(
       '/api/recycle-bin/:id',
       async (request, reply) => {
+        if (await requireNotSuspended(request, reply)) return;
+
         const db = getDb();
         const [item] = await db
           .select()
@@ -128,8 +133,8 @@ export function createRecycleBinRoutes(storage: StorageAdapter) {
         for (const file of filesToDelete) {
           try {
             await storage.delete(file.storageKey || file.storage_key);
-          } catch {
-            // Continue even if storage delete fails
+          } catch (error) {
+            console.error(`Failed to delete file from storage: ${file.storageKey || file.storage_key}`, error);
           }
         }
 

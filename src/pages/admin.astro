@@ -114,9 +114,13 @@ import { Show } from '@clerk/astro/components';
                 <h2 class="text-body-strong"><i class="bi bi-clock-history"></i> Recent audit activity</h2>
                 <span class="text-caption text-muted" id="audit-showing"></span>
               </div>
-              <ul id="audit-list" class="admin-list">
+              <ul id="audit-list" class="admin-list" style="max-height: 380px; overflow-y: auto;">
                 <li class="admin-list__placeholder text-muted text-caption">Loading...</li>
               </ul>
+              <div style="display: flex; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--color-divider); background: rgba(255,255,255,.01);">
+                <button id="audit-prev" class="btn btn--sm btn--ghost">Previous</button>
+                <button id="audit-next" class="btn btn--sm btn--ghost">Next</button>
+              </div>
             </section>
 
             <section class="admin-panel-section">
@@ -124,9 +128,13 @@ import { Show } from '@clerk/astro/components';
                 <h2 class="text-body-strong"><i class="bi bi-exclamation-triangle"></i> Open abuse flags</h2>
                 <span class="text-caption text-muted" id="flag-showing"></span>
               </div>
-              <ul id="flag-list" class="admin-list">
+              <ul id="flag-list" class="admin-list" style="max-height: 380px; overflow-y: auto;">
                 <li class="admin-list__placeholder text-muted text-caption">Loading...</li>
               </ul>
+              <div style="display: flex; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--color-divider); background: rgba(255,255,255,.01);">
+                <button id="flag-prev" class="btn btn--sm btn--ghost">Previous</button>
+                <button id="flag-next" class="btn btn--sm btn--ghost">Next</button>
+              </div>
             </section>
           </div>
         </div>
@@ -150,46 +158,54 @@ import { Show } from '@clerk/astro/components';
               <div class="admin-panel-section__header">
                 <h2 class="text-body-strong"><i class="bi bi-globe"></i> Global SEO Settings</h2>
               </div>
-              <form id="seo-form" style="display: flex; flex-direction: column; gap: 16px;">
-                <div>
-                  <label for="seo-title" class="text-caption text-muted" style="display: block; margin-bottom: 6px;">Default Title</label>
-                  <input type="text" id="seo-title" name="title" class="input" style="width: 100%;" placeholder="e.g. LabRepo - Student Workspace" />
-                </div>
-                <div>
-                  <label for="seo-description" class="text-caption text-muted" style="display: block; margin-bottom: 6px;">Default Description</label>
-                  <textarea id="seo-description" name="description" class="input" style="width: 100%; min-height: 100px; resize: vertical;" placeholder="Site description for search engines"></textarea>
-                </div>
-                <div>
-                  <label for="seo-twitter" class="text-caption text-muted" style="display: block; margin-bottom: 6px;">Twitter Handle</label>
-                  <input type="text" id="seo-twitter" name="twitterHandle" class="input" style="width: 100%;" placeholder="@labrepo" />
-                </div>
-                <button type="submit" class="btn btn--primary" style="align-self: flex-start; margin-top: 8px;">Save Settings</button>
-              </form>
+              <div class="p-5">
+                <form id="seo-form" class="flex flex-col gap-6">
+                  <div>
+                    <label for="seo-title" class="text-caption text-muted block mb-2 font-medium">Default Title</label>
+                    <input type="text" id="seo-title" name="title" class="input w-full px-4 py-3 rounded-md" placeholder="e.g. LabRepo - Student Workspace" />
+                  </div>
+                  <div>
+                    <label for="seo-description" class="text-caption text-muted block mb-2 font-medium">Default Description</label>
+                    <textarea id="seo-description" name="description" class="input w-full px-4 py-3 min-h-[120px] resize-y rounded-md" placeholder="Site description for search engines"></textarea>
+                  </div>
+                  <div>
+                    <label for="seo-twitter" class="text-caption text-muted block mb-2 font-medium">Twitter Handle</label>
+                    <input type="text" id="seo-twitter" name="twitterHandle" class="input w-full px-4 py-3 rounded-md" placeholder="@labrepo" />
+                  </div>
+                  <button type="submit" class="btn btn--primary self-start mt-2">Save Settings</button>
+                </form>
+              </div>
             </div>
 
             <div class="admin-panel-section">
               <div class="admin-panel-section__header">
                 <h2 class="text-body-strong"><i class="bi bi-image"></i> Open Graph Image</h2>
               </div>
-              <p class="text-caption text-muted" style="margin-bottom: 16px;">Upload a default social preview image (1200x630px recommended).</p>
-              
-              <div class="og-preview-card" style="margin-bottom: 24px; border: 1px solid var(--color-divider); border-radius: 12px; overflow: hidden; background: var(--color-surface);">
-                <div style="aspect-ratio: 16/9; background: var(--color-surface-hover); position: relative; display: flex; align-items: center; justify-content: center; color: var(--color-ink-muted);" id="og-image-preview">
-                  No image uploaded
+              <div class="p-5 flex flex-col gap-6">
+                <p class="text-caption text-muted m-0">Upload a default social preview image (1200x630px recommended).</p>
+                
+                <div class="og-preview-card border border-divider rounded-xl overflow-hidden bg-surface">
+                  <div class="aspect-video bg-surface-hover relative flex items-center justify-center text-ink-muted" id="og-image-preview">
+                    No image uploaded
+                  </div>
+                  <div class="p-4 border-t border-divider">
+                    <div class="text-caption text-muted whitespace-nowrap overflow-hidden text-ellipsis mb-1" id="og-site-name">labrepo.example.com</div>
+                    <div class="text-body-strong whitespace-nowrap overflow-hidden text-ellipsis mb-1" id="og-preview-title">LabRepo - Student Workspace</div>
+                    <div class="text-caption text-muted line-clamp-2" id="og-preview-desc">Safely organize and retrieve your college lab work. Never lose a file again.</div>
+                  </div>
                 </div>
-                <div style="padding: 16px; border-top: 1px solid var(--color-divider);">
-                  <div class="text-caption text-muted" id="og-site-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">labrepo.example.com</div>
-                  <div class="text-body-strong" id="og-preview-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">LabRepo - Student Workspace</div>
-                  <div class="text-caption text-muted" id="og-preview-desc" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Safely organize and retrieve your college lab work. Never lose a file again.</div>
-                </div>
-              </div>
 
-              <form id="seo-image-form" style="display: flex; flex-direction: column; gap: 16px;">
-                <div>
-                  <input type="file" id="seo-image" name="image" accept="image/jpeg, image/png" class="input" style="padding: 8px; width: 100%; cursor: pointer;" />
-                </div>
-                <button type="submit" class="btn btn--dark-utility" style="align-self: flex-start;">Upload Image</button>
-              </form>
+                <form id="seo-image-form" class="flex flex-col gap-6">
+                  <div class="flex items-center gap-4 bg-surface p-3 border border-divider rounded-xl">
+                    <label for="seo-image" class="btn btn--dark-utility m-0 whitespace-nowrap cursor-pointer">
+                      <i class="bi bi-folder2-open mr-2"></i> Choose File
+                    </label>
+                    <span id="seo-image-filename" class="text-caption text-muted whitespace-nowrap overflow-hidden text-ellipsis max-w-full">No file chosen</span>
+                    <input type="file" id="seo-image" name="image" accept="image/jpeg, image/png" class="hidden" onchange="document.getElementById('seo-image-filename').textContent = this.files[0] ? this.files[0].name : 'No file chosen';" />
+                  </div>
+                  <button type="submit" class="btn btn--primary self-start">Upload Image</button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
@@ -223,20 +239,21 @@ import { Show } from '@clerk/astro/components';
               <p class="text-caption text-muted">Flags can be resolved from the Overview tab. Resolving a flag records an audit log entry with the admin's ID.</p>
             </div>
 
-            <!-- Upload suspension -->
+            <!-- Suspend user -->
             <div class="admin-learn-card">
               <div class="admin-learn-card__header">
                 <div class="admin-learn-card__icon admin-learn-card__icon--danger"><i class="bi bi-slash-circle"></i></div>
-                <h3>Suspend uploads</h3>
+                <h3>Suspend user</h3>
               </div>
-              <p>Suspending a user <strong>blocks all file uploads</strong> for that account. The user can still:</p>
+              <p>Suspending a user <strong>blocks all data creation, modification, and deletion</strong> for that account. The user can still:</p>
               <ul class="admin-learn-card__list">
                 <li><i class="bi bi-check-lg"></i> Sign in and view their dashboard</li>
                 <li><i class="bi bi-check-lg"></i> Download existing files</li>
                 <li><i class="bi bi-check-lg"></i> Search and browse their work</li>
-                <li><i class="bi bi-x-lg text-danger"></i> Upload new files <span class="text-muted">(blocked)</span></li>
+                <li><i class="bi bi-x-lg text-danger"></i> Create files, works, subjects, sessions <span class="text-muted">(blocked)</span></li>
+                <li><i class="bi bi-x-lg text-danger"></i> Delete any existing data <span class="text-muted">(blocked)</span></li>
               </ul>
-              <p class="text-caption text-muted">The user will see a clear error message explaining their uploads have been suspended. All suspend/restore actions are logged in the audit trail.</p>
+              <p class="text-caption text-muted mt-2">The user will see a clear error message explaining their account has been suspended. <strong>Hard Delete</strong> becomes available for suspended users, allowing you to irrevocably wipe their entire data footprint from the database and storage.</p>
             </div>
 
             <!-- Restore account -->
@@ -314,7 +331,8 @@ import { Show } from '@clerk/astro/components';
         // Wait for Clerk to be ready
         await new Promise<void>((resolve) => {
           const check = () => {
-            if ((window as any).Clerk && (window as any).Clerk.isReady()) resolve();
+            const c = (window as any).Clerk;
+            if (c && (typeof c.isReady === 'function' ? c.isReady() : c.loaded)) resolve();
             else setTimeout(check, 100);
           };
           check();
@@ -340,6 +358,130 @@ import { Show } from '@clerk/astro/components';
         });
 
         let usersLoaded = false;
+        
+        let allAuditLogs: any[] = [];
+        let currentAuditPage = 1;
+        const auditItemsPerPage = 10;
+        
+        let allAbuseFlags: any[] = [];
+        let currentFlagPage = 1;
+        const flagItemsPerPage = 10;
+
+        function renderAuditLogs() {
+          const auditList = document.getElementById("audit-list")!;
+          auditList.innerHTML = "";
+          if (!allAuditLogs.length) {
+            auditList.innerHTML = '<li class="admin-list__placeholder text-muted text-caption">No audit events yet.</li>';
+            document.getElementById("audit-prev")!.setAttribute("disabled", "true");
+            document.getElementById("audit-next")!.setAttribute("disabled", "true");
+            return;
+          }
+          const totalPages = Math.ceil(allAuditLogs.length / auditItemsPerPage);
+          document.getElementById("audit-showing")!.textContent = `Page ${currentAuditPage} of ${totalPages} (${allAuditLogs.length} total)`;
+          
+          const start = (currentAuditPage - 1) * auditItemsPerPage;
+          const end = start + auditItemsPerPage;
+          
+          allAuditLogs.slice(start, end).forEach((entry: any) => {
+            const li = document.createElement("li");
+            li.className = "admin-list__item animate-fade-in";
+            const actionLabel = (entry.action || "unknown").replace(/_/g, " ");
+            const timeAgo = entry.createdAt ? formatRelativeTime(entry.createdAt) : "unknown";
+            const icon = getActionIcon(entry.action);
+            li.innerHTML = `
+              <span class="admin-list__item-icon">${icon}</span>
+              <div class="admin-list__item-body">
+                <span class="text-caption">${actionLabel}</span>
+                <span class="text-caption text-muted">${timeAgo}${entry.userId ? ` · ${entry.userId.slice(0, 16)}…` : ""}</span>
+              </div>
+            `;
+            auditList.appendChild(li);
+          });
+          
+          const prevBtn = document.getElementById("audit-prev") as HTMLButtonElement;
+          const nextBtn = document.getElementById("audit-next") as HTMLButtonElement;
+          prevBtn.disabled = currentAuditPage === 1;
+          nextBtn.disabled = currentAuditPage === totalPages;
+        }
+
+        function renderAbuseFlags() {
+          const flagList = document.getElementById("flag-list")!;
+          flagList.innerHTML = "";
+          if (!allAbuseFlags.length) {
+            flagList.innerHTML = '<li class="admin-list__placeholder text-muted text-caption"><i class="bi bi-check-circle"></i> No active abuse flags</li>';
+            document.getElementById("flag-prev")!.setAttribute("disabled", "true");
+            document.getElementById("flag-next")!.setAttribute("disabled", "true");
+            return;
+          }
+          
+          const totalPages = Math.ceil(allAbuseFlags.length / flagItemsPerPage);
+          document.getElementById("flag-showing")!.textContent = `Page ${currentFlagPage} of ${totalPages} (${allAbuseFlags.length} total)`;
+          
+          const start = (currentFlagPage - 1) * flagItemsPerPage;
+          const end = start + flagItemsPerPage;
+          
+          allAbuseFlags.slice(start, end).forEach((flag: any) => {
+            const li = document.createElement("li");
+            li.className = "admin-list__item admin-list__item--flag animate-fade-in";
+            const severityClass = flag.severity === "high" ? "admin-badge--danger" : flag.severity === "medium" ? "admin-badge--warning" : "admin-badge--info";
+            const timeAgo = flag.createdAt ? formatRelativeTime(flag.createdAt) : "unknown";
+            li.innerHTML = `
+              <div class="admin-list__item-body" style="flex: 1; min-width: 0;">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-caption font-semibold">${(flag.type || "unknown").replace(/_/g, " ")}</span>
+                  <span class="admin-badge ${severityClass}">${flag.severity || "—"}</span>
+                  ${flag.resolved ? '<span class="admin-badge admin-badge--success">resolved</span>' : ""}
+                </div>
+                <span class="text-caption text-muted">${flag.reason || "No reason"} · ${timeAgo}</span>
+              </div>
+              ${!flag.resolved ? `<button class="btn btn--ghost btn--sm btn-resolve-flag" data-id="${flag.id}" title="Resolve flag"><i class="bi bi-check-lg"></i></button>` : ""}
+            `;
+            flagList.appendChild(li);
+          });
+          
+          flagList.querySelectorAll(".btn-resolve-flag").forEach((btn: any) => {
+            btn.addEventListener("click", async () => {
+              try {
+                await api.resolveFlag(parseInt(btn.dataset.id), "Resolved from admin panel");
+                showToast("Flag resolved", "success");
+                await loadOverview();
+              } catch (err: any) {
+                showToast(err.message || "Failed to resolve flag", "error");
+              }
+            });
+          });
+          
+          const prevBtn = document.getElementById("flag-prev") as HTMLButtonElement;
+          const nextBtn = document.getElementById("flag-next") as HTMLButtonElement;
+          prevBtn.disabled = currentFlagPage === 1;
+          nextBtn.disabled = currentFlagPage === totalPages;
+        }
+
+        document.getElementById("audit-prev")!.addEventListener("click", () => {
+          if (currentAuditPage > 1) {
+            currentAuditPage--;
+            renderAuditLogs();
+          }
+        });
+        document.getElementById("audit-next")!.addEventListener("click", () => {
+          if (currentAuditPage < Math.ceil(allAuditLogs.length / auditItemsPerPage)) {
+            currentAuditPage++;
+            renderAuditLogs();
+          }
+        });
+        
+        document.getElementById("flag-prev")!.addEventListener("click", () => {
+          if (currentFlagPage > 1) {
+            currentFlagPage--;
+            renderAbuseFlags();
+          }
+        });
+        document.getElementById("flag-next")!.addEventListener("click", () => {
+          if (currentFlagPage < Math.ceil(allAbuseFlags.length / flagItemsPerPage)) {
+            currentFlagPage++;
+            renderAbuseFlags();
+          }
+        });
 
         // ===== Overview data =====
         async function loadOverview() {
@@ -356,69 +498,17 @@ import { Show } from '@clerk/astro/components';
             document.getElementById("total-downloads")!.textContent = String(summary.totalDownloads || 0);
 
             // Load audit logs
-            const logs = await api.getAuditLogs();
-            const auditList = document.getElementById("audit-list")!;
-            auditList.innerHTML = "";
-            if (!logs.logs?.length) {
-              auditList.innerHTML = '<li class="admin-list__placeholder text-muted text-caption">No audit events yet.</li>';
-            } else {
-              document.getElementById("audit-showing")!.textContent = `Showing ${Math.min(logs.logs.length, 10)} of ${logs.logs.length}`;
-              logs.logs.slice(0, 10).forEach((entry: any) => {
-                const li = document.createElement("li");
-                li.className = "admin-list__item animate-fade-in";
-                const actionLabel = (entry.action || "unknown").replace(/_/g, " ");
-                const timeAgo = entry.created_at ? formatRelativeTime(entry.created_at) : "unknown";
-                const icon = getActionIcon(entry.action);
-                li.innerHTML = `
-                  <span class="admin-list__item-icon">${icon}</span>
-                  <div class="admin-list__item-body">
-                    <span class="text-caption">${actionLabel}</span>
-                    <span class="text-caption text-muted">${timeAgo}${entry.user_id ? ` · ${entry.user_id.slice(0, 16)}…` : ""}</span>
-                  </div>
-                `;
-                auditList.appendChild(li);
-              });
-            }
+            const logsRes = await api.getAuditLogs();
+            allAuditLogs = logsRes.logs || [];
+            currentAuditPage = 1;
+            renderAuditLogs();
 
             // Load abuse flags
-            const flags = await api.getAbuseFlags();
-            const flagList = document.getElementById("flag-list")!;
-            flagList.innerHTML = "";
-            if (!flags.flags?.length) {
-              flagList.innerHTML = '<li class="admin-list__placeholder text-muted text-caption"><i class="bi bi-check-circle"></i> No active abuse flags</li>';
-            } else {
-              document.getElementById("flag-showing")!.textContent = `Showing ${Math.min(flags.flags.length, 10)} of ${flags.flags.length}`;
-              flags.flags.slice(0, 10).forEach((flag: any) => {
-                const li = document.createElement("li");
-                li.className = "admin-list__item admin-list__item--flag animate-fade-in";
-                const severityClass = flag.severity === "high" ? "admin-badge--danger" : flag.severity === "medium" ? "admin-badge--warning" : "admin-badge--info";
-                const timeAgo = flag.created_at ? formatRelativeTime(flag.created_at) : "unknown";
-                li.innerHTML = `
-                  <div class="admin-list__item-body" style="flex: 1; min-width: 0;">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-caption font-semibold">${(flag.type || "unknown").replace(/_/g, " ")}</span>
-                      <span class="admin-badge ${severityClass}">${flag.severity || "—"}</span>
-                      ${flag.resolved ? '<span class="admin-badge admin-badge--success">resolved</span>' : ""}
-                    </div>
-                    <span class="text-caption text-muted">${flag.reason || "No reason"} · ${timeAgo}</span>
-                  </div>
-                  ${!flag.resolved ? `<button class="btn btn--ghost btn--sm btn-resolve-flag" data-id="${flag.id}" title="Resolve flag"><i class="bi bi-check-lg"></i></button>` : ""}
-                `;
-                flagList.appendChild(li);
-              });
-
-              flagList.querySelectorAll(".btn-resolve-flag").forEach((btn: any) => {
-                btn.addEventListener("click", async () => {
-                  try {
-                    await api.resolveFlag(parseInt(btn.dataset.id), "Resolved from admin panel");
-                    showToast("Flag resolved", "success");
-                    await loadOverview();
-                  } catch (err: any) {
-                    showToast(err.message || "Failed to resolve flag", "error");
-                  }
-                });
-              });
-            }
+            const flagsRes = await api.getAbuseFlags();
+            allAbuseFlags = flagsRes.flags || [];
+            currentFlagPage = 1;
+            renderAbuseFlags();
+            
           } catch (error: any) {
             console.error("Admin load error:", error);
             if (error?.status === 403) {
@@ -498,7 +588,8 @@ import { Show } from '@clerk/astro/components';
                   </div>
                   <div class="admin-user-row__actions">
                     ${isSuspended
-                      ? `<button class="btn btn--dark-utility btn--sm btn-user-restore" data-uid="${user.clerk_id}"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>`
+                      ? `<button class="btn btn--dark-utility btn--sm btn-user-restore" data-uid="${user.clerk_id}"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
+                         <button class="btn btn--danger btn--sm btn-user-harddelete" data-uid="${user.clerk_id}"><i class="bi bi-trash"></i> Hard Delete</button>`
                       : `<button class="btn btn--danger btn--sm btn-user-suspend" data-uid="${user.clerk_id}"><i class="bi bi-slash-circle"></i> Suspend</button>`
                     }
                   </div>
@@ -538,6 +629,27 @@ import { Show } from '@clerk/astro/components';
                 }
               });
             });
+
+            // Wire up hard delete buttons
+            container.querySelectorAll(".btn-user-harddelete").forEach((btn: any) => {
+              btn.addEventListener("click", async () => {
+                const uid = btn.dataset.uid;
+                const confirmation = prompt(`WARNING: This will permanently delete ALL data for user ${uid.slice(0, 16)}… including files, sessions, and logs.\n\nType "DELETE" to confirm:`);
+                if (confirmation !== "DELETE") {
+                  if (confirmation !== null) showToast("Deletion cancelled.", "info");
+                  return;
+                }
+                
+                try {
+                  await api.hardDeleteUser(uid);
+                  showToast("User and all data permanently deleted", "success");
+                  await loadUsers();
+                  await loadOverview();
+                } catch (err: any) {
+                  showToast(err.message || "Hard delete failed", "error");
+                }
+              });
+            });
           } catch (err: any) {
             loadingDiv.style.display = "none";
             container.innerHTML = '<div class="admin-list__placeholder text-muted text-caption">Failed to load users.</div>';
@@ -567,7 +679,7 @@ import { Show } from '@clerk/astro/components';
         // Load SEO data
         async function loadSEOData() {
           try {
-            const res = await api.get('/admin/seo');
+            const res = await api.getAdminSEO();
             if (res.seo) {
               const titleInput = document.getElementById('seo-title') as HTMLInputElement;
               const descInput = document.getElementById('seo-description') as HTMLTextAreaElement;
@@ -608,7 +720,7 @@ import { Show } from '@clerk/astro/components';
             try {
               const btn = (e.target as HTMLElement).querySelector('button');
               if (btn) btn.disabled = true;
-              await api.post('/admin/seo', data);
+              await api.updateAdminSEO(data);
               showToast('SEO settings saved successfully', 'success');
               loadSEOData();
             } catch (err) {

@@ -1,16 +1,13 @@
 ---
 import Layout from "../Layouts/Layout.astro";
-import { Show } from "@clerk/astro/components";
+
+const { userId } = Astro.locals.auth();
+if (!userId) {
+  return Astro.redirect("/");
+}
 ---
 
 <Layout title="Recycle Bin">
-  <Show when="signed-out">
-    <script>
-      window.location.href = "/";
-    </script>
-  </Show>
-
-  <Show when="signed-in">
     <div class="container page-content">
       <div class="page-header mb-8">
         <h1 class="text-display-lg">
@@ -176,5 +173,4 @@ import { Show } from "@clerk/astro/components";
       .mt-2 { margin-top: 8px; }
       .flex-wrap { flex-wrap: wrap; }
     </style>
-  </Show>
 </Layout>

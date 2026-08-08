@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { StorageAdapter } from '../storage/adapter.js';
 import { getDb } from '../db/runtime.js';
-import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings } from '../db/schema.js';
+import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings, files, works, subjects, recycleBin } from '../db/schema.js';
 import { writeAuditLog } from '../services/audit.service.js';
 import { eq, sql, count, sum } from 'drizzle-orm';
 
@@ -59,8 +59,8 @@ export function createAdminRoutes(storage: StorageAdapter) {
         total_downloads: sql<number>`COALESCE(${userUsageStats.totalDownloads}, 0)`,
         last_upload_at: userUsageStats.lastUploadAt,
         last_login_at: userUsageStats.lastLoginAt,
-        session_count: sql<number>`(SELECT COUNT(*) FROM academic_sessions WHERE user_id = ${users.clerkId})`,
-        open_flags: sql<number>`(SELECT COUNT(*) FROM abuse_flags WHERE user_id = ${users.clerkId} AND resolved = 0)`,
+        session_count: sql<number>`(SELECT COUNT(*) FROM academic_sessions WHERE user_id = users.clerk_id)`,
+        open_flags: sql<number>`(SELECT COUNT(*) FROM abuse_flags WHERE user_id = users.clerk_id AND resolved = 0)`,
       })
       .from(users)
       .leftJoin(userUsageStats, eq(userUsageStats.userId, users.clerkId))
@@ -182,6 +182,49 @@ export function createAdminRoutes(storage: StorageAdapter) {
     });
 
     return { success: true, userId, action: 'account_restored' };
+  });
+
+  // Hard delete a user
+  fastify.delete<{ Params: { userId: string } }>('/api/admin/users/:userId/hard-delete', async (request, reply) => {
+    const db = getDb();
+    const userId = request.params.userId;
+
+    // 1. Fetch all files for physical deletion
+    const userFiles = await db.select({ storageKey: files.storageKey }).from(files).where(eq(files.userId, userId));
+    for (const f of userFiles) {
+      if (f.storageKey) {
+        try {
+          await storage.delete(f.storageKey);
+        } catch (e) {
+          console.error(`Failed to physically delete file ${f.storageKey}:`, e);
+        }
+      }
+    }
+
+    // 2. Wipe everything from DB in a transaction
+    await db.transaction(async (tx) => {
+      await tx.delete(recycleBin).where(eq(recycleBin.userId, userId));
+      await tx.delete(files).where(eq(files.userId, userId));
+      await tx.delete(works).where(eq(works.userId, userId));
+      await tx.delete(subjects).where(eq(subjects.userId, userId));
+      await tx.delete(academicSessions).where(eq(academicSessions.userId, userId));
+      await tx.delete(userUsageStats).where(eq(userUsageStats.userId, userId));
+      await tx.delete(abuseFlags).where(eq(abuseFlags.userId, userId));
+      await tx.delete(auditLogs).where(eq(auditLogs.userId, userId));
+      await tx.delete(users).where(eq(users.clerkId, userId));
+    });
+
+    await writeAuditLog({
+      userId: request.userId,
+      action: 'admin_hard_deleted_user',
+      resourceType: 'user',
+      resourceId: userId,
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent'],
+      metadata: {},
+    });
+
+    return { success: true, userId, action: 'hard_deleted' };
   });
 
     // Storage health and stats

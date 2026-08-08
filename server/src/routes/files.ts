@@ -10,6 +10,7 @@ import { evaluateAbuseSignals } from '../services/moderation.service.js';
 import { getSecurityConfig } from '../services/config.service.js';
 import { rateLimiter } from '../services/rate-limit.service.js';
 import { eq, and, sql } from 'drizzle-orm';
+import { requireNotSuspended } from '../auth/suspension.js';
 
 const securityConfig = getSecurityConfig();
 const ALLOWED_EXTENSIONS = new Set(securityConfig.allowedExtensions);
@@ -93,15 +94,7 @@ export function createFileRoutes(storage: StorageAdapter) {
         }
 
         // Check if uploads are suspended
-        const [user] = await db
-          .select({ uploadsSuspended: (await import('../db/schema.js')).users.uploadsSuspended })
-          .from((await import('../db/schema.js')).users)
-          .where(eq((await import('../db/schema.js')).users.clerkId, request.userId))
-          .limit(1);
-
-        if (user?.uploadsSuspended) {
-          return reply.status(403).send({ error: 'Your uploads have been suspended by an administrator. Contact support for assistance.' });
-        }
+        if (await requireNotSuspended(request, reply)) return;
 
         const parts = request.parts();
         const uploadedFiles: (typeof files.$inferSelect)[] = [];
@@ -299,6 +292,8 @@ export function createFileRoutes(storage: StorageAdapter) {
 
     // Delete a single file (soft delete)
     fastify.delete<{ Params: { id: string } }>('/api/files/:id', async (request, reply) => {
+      if (await requireNotSuspended(request, reply)) return;
+
       const db = getDb();
       const [file] = await db
         .select()

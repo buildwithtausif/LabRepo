@@ -116,7 +116,7 @@ export async function searchRoutes(fastify: FastifyInstance): Promise<void> {
         subject_name: subjects.name,
         session_id: academicSessions.id,
         session_name: academicSessions.name,
-        file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = ${works.id})`,
+        file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = works.id)`,
       })
       .from(works)
       .innerJoin(subjects, eq(works.subjectId, subjects.id))

@@ -163,6 +163,14 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ notes }),
   }),
+  hardDeleteUser: (userId: string) => request(`/admin/users/${userId}/hard-delete`, {
+    method: 'DELETE',
+  }),
+  getAdminSEO: () => request('/admin/seo'),
+  updateAdminSEO: (data: any) => request('/admin/seo', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 
   // Search
   search: (params: {

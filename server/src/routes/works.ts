@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db/runtime.js';
 import { works, subjects, academicSessions, files, recycleBin } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
+import { requireNotSuspended } from '../auth/suspension.js';
 
 interface CreateWorkBody {
   title?: string;
@@ -39,8 +40,8 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
           title: works.title,
           createdAt: works.createdAt,
           updatedAt: works.updatedAt,
-          file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = ${works.id})`,
-          total_size: sql<number>`(SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = ${works.id})`,
+          file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = works.id)`,
+          total_size: sql<number>`(SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = works.id)`,
         })
         .from(works)
         .where(eq(works.subjectId, Number(request.params.subjectId)))
@@ -65,8 +66,8 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
         subject_id: subjects.id,
         session_name: academicSessions.name,
         session_id: academicSessions.id,
-        file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = ${works.id})`,
-        total_size: sql<number>`(SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = ${works.id})`,
+        file_count: sql<number>`(SELECT COUNT(*) FROM files WHERE work_id = works.id)`,
+        total_size: sql<number>`(SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE work_id = works.id)`,
       })
       .from(works)
       .innerJoin(subjects, eq(works.subjectId, subjects.id))
@@ -88,6 +89,8 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post<{ Params: { subjectId: string }; Body: CreateWorkBody }>(
     '/api/subjects/:subjectId/works',
     async (request, reply) => {
+      if (await requireNotSuspended(request, reply)) return;
+
       const db = getDb();
       const title = request.body?.title?.trim() || new Date().toISOString().split('T')[0];
 
@@ -156,6 +159,8 @@ export async function workRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Delete work (soft delete)
   fastify.delete<{ Params: { id: string } }>('/api/works/:id', async (request, reply) => {
+    if (await requireNotSuspended(request, reply)) return;
+
     const db = getDb();
     const [work] = await db
       .select()

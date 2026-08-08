@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db/runtime.js';
 import { subjects, academicSessions, works, files, recycleBin } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
+import { requireNotSuspended } from '../auth/suspension.js';
 
 interface CreateSubjectBody {
   name: string;
@@ -40,9 +41,9 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
           name: subjects.name,
           createdAt: subjects.createdAt,
           updatedAt: subjects.updatedAt,
-          work_count: sql<number>`(SELECT COUNT(*) FROM works WHERE subject_id = ${subjects.id})`,
-          file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = ${subjects.id})`,
-          total_size: sql<number>`(SELECT COALESCE(SUM(f.size_bytes), 0) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = ${subjects.id})`,
+          work_count: sql<number>`(SELECT COUNT(*) FROM works WHERE subject_id = subjects.id)`,
+          file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = subjects.id)`,
+          total_size: sql<number>`(SELECT COALESCE(SUM(f.size_bytes), 0) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = subjects.id)`,
         })
         .from(subjects)
         .where(eq(subjects.sessionId, Number(request.params.sessionId)))
@@ -63,11 +64,11 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
         name: subjects.name,
         createdAt: subjects.createdAt,
         updatedAt: subjects.updatedAt,
-        session_name: sql<string>`(SELECT name FROM academic_sessions WHERE id = ${subjects.sessionId})`,
+        session_name: sql<string>`(SELECT name FROM academic_sessions WHERE id = subjects.session_id)`,
         session_id: subjects.sessionId,
-        work_count: sql<number>`(SELECT COUNT(*) FROM works WHERE subject_id = ${subjects.id})`,
-        file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = ${subjects.id})`,
-        total_size: sql<number>`(SELECT COALESCE(SUM(f.size_bytes), 0) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = ${subjects.id})`,
+        work_count: sql<number>`(SELECT COUNT(*) FROM works WHERE subject_id = subjects.id)`,
+        file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = subjects.id)`,
+        total_size: sql<number>`(SELECT COALESCE(SUM(f.size_bytes), 0) FROM files f JOIN works w ON f.work_id = w.id WHERE w.subject_id = subjects.id)`,
       })
       .from(subjects)
       .where(and(
@@ -87,6 +88,8 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post<{ Params: { sessionId: string }; Body: CreateSubjectBody }>(
     '/api/sessions/:sessionId/subjects',
     async (request, reply) => {
+      if (await requireNotSuspended(request, reply)) return;
+
       const { name } = request.body;
 
       if (!name || !name.trim()) {
@@ -138,6 +141,8 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post<{ Params: { sessionId: string }; Body: { names: string[] } }>(
     '/api/sessions/:sessionId/subjects/batch',
     async (request, reply) => {
+      if (await requireNotSuspended(request, reply)) return;
+
       const { names } = request.body;
 
       if (!names || !Array.isArray(names) || names.length === 0) {
@@ -241,6 +246,8 @@ export async function subjectRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Delete subject (soft delete)
   fastify.delete<{ Params: { id: string } }>('/api/subjects/:id', async (request, reply) => {
+    if (await requireNotSuspended(request, reply)) return;
+
     const db = getDb();
     const [subject] = await db
       .select()

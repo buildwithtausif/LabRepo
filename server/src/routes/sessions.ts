@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db/runtime.js';
 import { academicSessions, subjects, works, files, recycleBin } from '../db/schema.js';
 import { eq, and, sql, count } from 'drizzle-orm';
+import { requireNotSuspended } from '../auth/suspension.js';
 
 interface CreateSessionBody {
   name: string;
@@ -29,8 +30,8 @@ export async function sessionRoutes(fastify: FastifyInstance): Promise<void> {
         autoDeleteDate: academicSessions.autoDeleteDate,
         createdAt: academicSessions.createdAt,
         updatedAt: academicSessions.updatedAt,
-        subject_count: sql<number>`(SELECT COUNT(*) FROM subjects WHERE session_id = ${academicSessions.id})`,
-        file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id JOIN subjects sub ON w.subject_id = sub.id WHERE sub.session_id = ${academicSessions.id})`,
+        subject_count: sql<number>`(SELECT COUNT(*) FROM subjects WHERE session_id = academic_sessions.id)`,
+        file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id JOIN subjects sub ON w.subject_id = sub.id WHERE sub.session_id = academic_sessions.id)`,
       })
       .from(academicSessions)
       .where(eq(academicSessions.userId, request.userId))
@@ -52,8 +53,8 @@ export async function sessionRoutes(fastify: FastifyInstance): Promise<void> {
         autoDeleteDate: academicSessions.autoDeleteDate,
         createdAt: academicSessions.createdAt,
         updatedAt: academicSessions.updatedAt,
-        subject_count: sql<number>`(SELECT COUNT(*) FROM subjects WHERE session_id = ${academicSessions.id})`,
-        file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id JOIN subjects sub ON w.subject_id = sub.id WHERE sub.session_id = ${academicSessions.id})`,
+        subject_count: sql<number>`(SELECT COUNT(*) FROM subjects WHERE session_id = academic_sessions.id)`,
+        file_count: sql<number>`(SELECT COUNT(*) FROM files f JOIN works w ON f.work_id = w.id JOIN subjects sub ON w.subject_id = sub.id WHERE sub.session_id = academic_sessions.id)`,
       })
       .from(academicSessions)
       .where(and(
@@ -71,6 +72,8 @@ export async function sessionRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Create academic session
   fastify.post<{ Body: CreateSessionBody }>('/api/sessions', async (request, reply) => {
+    if (await requireNotSuspended(request, reply)) return;
+
     const { name, auto_delete, auto_delete_date } = request.body;
 
     if (!name || !name.trim()) {
@@ -170,6 +173,8 @@ export async function sessionRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Delete academic session (soft delete → recycle bin)
   fastify.delete<{ Params: { id: string } }>('/api/sessions/:id', async (request, reply) => {
+    if (await requireNotSuspended(request, reply)) return;
+
     const db = getDb();
     const [session] = await db
       .select()
