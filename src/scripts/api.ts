@@ -76,6 +76,7 @@ async function request<T = any>(
 export const api = {
   // User
   getUserStatus: () => request('/user/status'),
+  getStorageStats: () => request('/user/storage-stats'),
   completeOnboarding: () => request('/user/complete-onboarding', { method: 'POST', body: JSON.stringify({}) }),
 
   // Sessions

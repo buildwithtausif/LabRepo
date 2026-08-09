@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db/runtime.js';
-import { users } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { users, files, userUsageStats } from '../db/schema.js';
+import { eq, sql } from 'drizzle-orm';
 import { updateUserUsage } from '../services/usage.service.js';
 import { evaluateAbuseSignals } from '../services/moderation.service.js';
 import { getSecurityConfig } from '../services/config.service.js';
@@ -64,4 +64,35 @@ export async function userRoutes(fastify: FastifyInstance): Promise<void> {
     await updateUserUsage({ userId: request.userId, loginDelta: 1, timestamp: new Date().toISOString() });
     return { success: true };
   });
+
+  // Get storage statistics
+  fastify.get('/api/user/storage-stats', async (request) => {
+    const db = getDb();
+
+    const [stats] = await db
+      .select({ storageUsed: userUsageStats.storageUsed })
+      .from(userUsageStats)
+      .where(eq(userUsageStats.userId, request.userId))
+      .limit(1);
+
+    const used = stats?.storageUsed || 0;
+    const allocated = securityConfig.maxStoragePerUserBytes;
+
+    const breakdown = await db
+      .select({
+        ext: files.extension,
+        size: sql<number>`SUM(${files.sizeBytes})::int`,
+      })
+      .from(files)
+      .where(eq(files.userId, request.userId))
+      .groupBy(files.extension)
+      .orderBy(sql`SUM(${files.sizeBytes}) DESC`);
+
+    return {
+      used,
+      allocated,
+      breakdown,
+    };
+  });
 }
+

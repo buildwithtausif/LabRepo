@@ -74,6 +74,23 @@ const isAdmin = userId === process.env.ADMIN_USER_ID || userId === process.env.C
               <article><strong id="stat-files">0</strong><span>Files</span></article>
             </div>
 
+            <!-- Storage Widget -->
+            <div class="store-utility-card" id="storage-widget" style="display: none; margin-top: var(--space-6); padding: var(--space-6);">
+              <div class="flex justify-between items-end mb-2">
+                <div>
+                  <h3 class="text-body-strong mb-1">Storage Usage</h3>
+                  <p class="text-caption text-muted" id="storage-text">Loading...</p>
+                </div>
+                <div class="text-caption text-muted" id="storage-percentage">0%</div>
+              </div>
+              <div class="storage-bar" id="storage-bar">
+                <!-- Segments will be injected here -->
+              </div>
+              <div class="storage-legend flex gap-4 flex-wrap mt-4 text-caption text-muted" id="storage-legend">
+                <!-- Legend will be injected here -->
+              </div>
+            </div>
+
         <!-- Sessions grid -->
         <div
           id="sessions-grid"
@@ -201,6 +218,97 @@ const isAdmin = userId === process.env.ADMIN_USER_ID || userId === process.env.C
 
         // Load sessions
         await loadSessions();
+        await loadStorageStats();
+
+        async function loadStorageStats() {
+          try {
+            const stats = await api.getStorageStats();
+            const widget = document.getElementById("storage-widget")!;
+            const textEl = document.getElementById("storage-text")!;
+            const percentEl = document.getElementById("storage-percentage")!;
+            const barEl = document.getElementById("storage-bar")!;
+            const legendEl = document.getElementById("storage-legend")!;
+            
+            if (stats.allocated === 0) return;
+
+            const formatSize = (window as any).__labrepo_formatSize;
+            widget.style.display = "block";
+            
+            const usedStr = formatSize(stats.used);
+            const allocatedStr = formatSize(stats.allocated);
+            const percent = Math.min(100, Math.round((stats.used / stats.allocated) * 100));
+            
+            textEl.textContent = `${usedStr} used of ${allocatedStr}`;
+            percentEl.textContent = `${percent}%`;
+
+            const extColors: Record<string, string> = {
+              js: '#f1e05a', mjs: '#f1e05a', cjs: '#f1e05a', jsx: '#f1e05a',
+              ts: '#3178c6', tsx: '#3178c6',
+              py: '#3572A5', ipynb: '#3572A5',
+              c: '#555555', h: '#555555', cpp: '#f34b7d', hpp: '#f34b7d',
+              java: '#b07219', kt: '#A97BFF',
+              cs: '#178600', go: '#00ADD8', rs: '#dea584',
+              swift: '#F05138', php: '#4F5D95', rb: '#701516',
+              r: '#198CE7', scala: '#c22d40', sql: '#e38c00',
+              html: '#e34c26', css: '#563d7c', scss: '#c6538c',
+              json: '#292929', yaml: '#cb171e', yml: '#cb171e', xml: '#0060ac',
+              md: '#083fa1', txt: '#cccccc', csv: '#237346',
+              env: '#a2a2a2', sh: '#89e051', bat: '#c1f12e', ps1: '#012456',
+              toml: '#9c4221', ini: '#d1d5db', cfg: '#d1d5db', conf: '#d1d5db', log: '#ffffff', dockerfile: '#384d54',
+              pdf: '#e32400',
+              doc: '#2b579a', docx: '#2b579a',
+              xls: '#217346', xlsx: '#217346',
+              ppt: '#d24726', pptx: '#d24726',
+              rtf: '#7a7a7a', tex: '#3D6117',
+            };
+            const defaultColor = '#858585';
+
+            let barHtml = '';
+            let legendHtml = '';
+            let totalVisualWidth = 0;
+
+            // Sort breakdown by size descending
+            const breakdown = stats.breakdown.sort((a: any, b: any) => b.size - a.size);
+            
+            breakdown.forEach((item: any) => {
+              if (item.size === 0) return;
+              const color = extColors[item.ext] || defaultColor;
+              let widthPercent = (item.size / stats.allocated) * 100;
+              
+              // Ensure even tiny files get a minimum visual width if they exist, but don't overflow
+              if (widthPercent > 0 && widthPercent < 0.5) widthPercent = 0.5;
+              
+              totalVisualWidth += widthPercent;
+              if (totalVisualWidth > 100) widthPercent -= (totalVisualWidth - 100);
+
+              if (widthPercent > 0) {
+                barHtml += `<div class="storage-bar-segment" style="width: ${widthPercent}%; background-color: ${color};" title="${item.ext}: ${formatSize(item.size)}"></div>`;
+                legendHtml += `
+                  <div class="storage-legend-item">
+                    <span class="storage-legend-color" style="background-color: ${color};"></span>
+                    <span>${item.ext} (${formatSize(item.size)})</span>
+                  </div>
+                `;
+              }
+            });
+
+            // Add empty space segment if not 100% full
+            if (totalVisualWidth < 100) {
+               barHtml += `<div class="storage-bar-segment" style="flex-grow: 1; background-color: transparent;"></div>`;
+            }
+
+            if (breakdown.length === 0) {
+              barHtml = `<div class="storage-bar-segment" style="width: 100%; background-color: rgba(255,255,255,0.05);"></div>`;
+              legendHtml = `<div class="storage-legend-item text-muted">No files yet</div>`;
+            }
+
+            barEl.innerHTML = barHtml;
+            legendEl.innerHTML = legendHtml;
+
+          } catch (e) {
+            console.error("Failed to load storage stats:", e);
+          }
+        }
 
         async function loadSessions() {
           try {
@@ -503,6 +611,31 @@ const isAdmin = userId === process.env.ADMIN_USER_ID || userId === process.env.C
         .dashboard-main .dashboard-session-card { padding: 18px; box-shadow: none; }
         .dashboard-main .dashboard-session-card:hover { transform: translateY(-2px); }
         .dashboard-main #sessions-empty { min-height: 360px; }
+      }
+      .storage-bar {
+        display: flex;
+        height: 12px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        overflow: hidden;
+        width: 100%;
+        margin-top: 8px;
+      }
+      .storage-bar-segment {
+        height: 100%;
+      }
+      .storage-bar-segment:not(:last-child) {
+        border-right: 1px solid #1a1b20;
+      }
+      .storage-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .storage-legend-color {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
       }
     </style>
 </Layout>
