@@ -18,6 +18,7 @@ const seo = buildSEO(seoProps, currentPath)
 const auth = Astro.locals.auth ? Astro.locals.auth() : null;
 const userId = auth ? auth.userId : null;
 const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === process.env.CLERK_ADMIN_USER_ID);
+const isDev = process.env.ENV === 'development';
 ---
 
 <!doctype html>
@@ -58,6 +59,21 @@ const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === pr
       "name": seo.siteName,
       "url": seo.url
     })} />
+
+    {isDev && (
+      <script define:vars={{ mockUserId: userId }}>
+        window.Clerk = {
+          loaded: true,
+          isReady: () => true,
+          session: {
+            getToken: async () => 'mock_token'
+          },
+          user: {
+            id: mockUserId || 'mock_dev_admin'
+          }
+        };
+      </script>
+    )}
 
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -115,29 +131,39 @@ const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === pr
           </Show>
 
           <div class="app-header__right">
-            <Show when="signed-out">
-              <SignInButton mode="modal" fallbackRedirectUrl="/dashboard" forceRedirectUrl="/dashboard" asChild={true}>
-                <button class="btn btn--dark-utility">Sign In</button>
-              </SignInButton>
-              <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard" forceRedirectUrl="/dashboard" asChild={true}>
-                <button class="btn btn--primary">Get Started</button>
-              </SignUpButton>
-            </Show>
-            <Show when="signed-in">
+            {isDev ? (
               <div style="display: flex; align-items: center;">
-                {isAdmin && (
-                  <div class="hawkins-badge" title="Hawkins Chief of Police (Admin)">
-                    <i class="bi bi-star-fill"></i> Chief
-                  </div>
-                )}
-                <UserButton />
+                <div class="hawkins-badge" title="Hawkins Chief of Police (Admin)">
+                  <i class="bi bi-star-fill"></i> Dev Admin
+                </div>
               </div>
-            </Show>
+            ) : (
+              <>
+                <Show when="signed-out">
+                  <SignInButton mode="modal" fallbackRedirectUrl="/dashboard" forceRedirectUrl="/dashboard" asChild={true}>
+                    <button class="btn btn--dark-utility">Sign In</button>
+                  </SignInButton>
+                  <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard" forceRedirectUrl="/dashboard" asChild={true}>
+                    <button class="btn btn--primary">Get Started</button>
+                  </SignUpButton>
+                </Show>
+                <Show when="signed-in">
+                  <div style="display: flex; align-items: center;">
+                    {isAdmin && (
+                      <div class="hawkins-badge" title="Hawkins Chief of Police (Admin)">
+                        <i class="bi bi-star-fill"></i> Chief
+                      </div>
+                    )}
+                    <UserButton />
+                  </div>
+                </Show>
+              </>
+            )}
           </div>
         </div>
 
         <!-- Mobile nav -->
-        <Show when="signed-in">
+        {isDev ? (
           <nav class="app-header__mobile-nav hide-desktop">
             <a href="/dashboard" class:list={["app-header__mobile-link", { active: currentPath === '/dashboard' }]}>
               <span><i class="bi bi-grid-1x2"></i></span><small>Home</small>
@@ -149,7 +175,21 @@ const isAdmin = userId && (userId === process.env.ADMIN_USER_ID || userId === pr
               <span><i class="bi bi-trash3"></i></span><small>Bin</small>
             </a>
           </nav>
-        </Show>
+        ) : (
+          <Show when="signed-in">
+            <nav class="app-header__mobile-nav hide-desktop">
+              <a href="/dashboard" class:list={["app-header__mobile-link", { active: currentPath === '/dashboard' }]}>
+                <span><i class="bi bi-grid-1x2"></i></span><small>Home</small>
+              </a>
+              <a href="/search" class:list={["app-header__mobile-link", { active: currentPath === '/search' }]}>
+                <span><i class="bi bi-search"></i></span><small>Search</small>
+              </a>
+              <a href="/recycle-bin" class:list={["app-header__mobile-link", { active: currentPath === '/recycle-bin' }]}>
+                <span><i class="bi bi-trash3"></i></span><small>Bin</small>
+              </a>
+            </nav>
+          </Show>
+        )}
       </header>
     )}
 

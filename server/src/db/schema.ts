@@ -18,6 +18,7 @@ export const users = pgTable('users', {
   onboardingCompleted: integer('onboarding_completed').notNull().default(0),
   uploadsSuspended: integer('uploads_suspended').notNull().default(0),
   suspensionReason: text('suspension_reason'),
+  allowedExtensions: text('allowed_extensions'),
   createdAt: text('created_at').notNull().default(nowIso),
   updatedAt: text('updated_at').notNull().default(nowIso),
 });

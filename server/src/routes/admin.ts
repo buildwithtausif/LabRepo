@@ -92,6 +92,7 @@ export function createAdminRoutes(storage: StorageAdapter) {
         last_login_at: userUsageStats.lastLoginAt,
         session_count: sql<number>`(SELECT COUNT(*) FROM academic_sessions WHERE user_id = users.clerk_id)`,
         open_flags: sql<number>`(SELECT COUNT(*) FROM abuse_flags WHERE user_id = users.clerk_id AND resolved = 0)`,
+        allowed_extensions: users.allowedExtensions,
       })
       .from(users)
       .leftJoin(userUsageStats, eq(userUsageStats.userId, users.clerkId))
@@ -215,6 +216,33 @@ export function createAdminRoutes(storage: StorageAdapter) {
     return { success: true, userId, action: 'account_restored' };
   });
 
+  // Manage user-specific file extensions
+  fastify.post<{ Params: { userId: string }; Body: { extensions?: string } }>('/api/admin/users/:userId/extensions', async (request, reply) => {
+    const db = getDb();
+    const userId = request.params.userId;
+    const extensions = request.body.extensions || null;
+
+    await db
+      .update(users)
+      .set({
+        allowedExtensions: extensions,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.clerkId, userId));
+
+    await writeAuditLog({
+      userId: request.userId,
+      action: 'admin_updated_user_extensions',
+      resourceType: 'user',
+      resourceId: userId,
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent'],
+      metadata: { extensions },
+    });
+
+    return { success: true, userId, action: 'extensions_updated' };
+  });
+
   // Hard delete a user
   fastify.delete<{ Params: { userId: string } }>('/api/admin/users/:userId/hard-delete', async (request, reply) => {
     const db = getDb();
@@ -279,6 +307,47 @@ export function createAdminRoutes(storage: StorageAdapter) {
       // Check storage health using a non-intrusive method if possible
       // Note: We avoid listing all files for privacy. We just return DB stats.
       return { stats };
+    });
+
+    // Global Config Management (File Types)
+    fastify.get('/api/admin/config', async () => {
+      const db = getDb();
+      const settings = await db.select().from(siteSettings).where(sql`${siteSettings.key} LIKE 'config.%'`);
+      const config: Record<string, string> = {};
+      for (const s of settings) {
+        config[s.key.replace('config.', '')] = s.value;
+      }
+      return { config };
+    });
+
+    fastify.post('/api/admin/config', async (request, reply) => {
+      const db = getDb();
+      const data = request.body as Record<string, string>;
+      
+      await db.transaction(async (tx) => {
+        for (const [key, value] of Object.entries(data)) {
+          if (!key || typeof value !== 'string') continue;
+          const fullKey = `config.${key}`;
+          
+          const [existing] = await tx.select().from(siteSettings).where(eq(siteSettings.key, fullKey)).limit(1);
+          if (existing) {
+            await tx.update(siteSettings).set({ value, updatedAt: new Date().toISOString() }).where(eq(siteSettings.key, fullKey));
+          } else {
+            await tx.insert(siteSettings).values({ key: fullKey, value, updatedAt: new Date().toISOString() });
+          }
+        }
+      });
+
+      await writeAuditLog({
+        userId: request.userId,
+        action: 'admin_updated_config',
+        resourceType: 'site_settings',
+        resourceId: 'config',
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+      });
+
+      return { success: true };
     });
 
     // SEO Settings Management

@@ -172,6 +172,15 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  getAdminConfig: () => request('/admin/config'),
+  updateAdminConfig: (data: any) => request('/admin/config', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateUserExtensions: (userId: string, extensions: string) => request(`/admin/users/${userId}/extensions`, {
+    method: 'POST',
+    body: JSON.stringify({ extensions }),
+  }),
 
   // Search
   search: (params: {

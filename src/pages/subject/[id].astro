@@ -215,11 +215,8 @@ const { id } = Astro.params;
         }
 
         function getUnsupportedFiles(files: File[]) {
-          return files.filter((file) => {
-            const parts = file.name.split('.');
-            const extension = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
-            return !allowedExtensions.has(extension);
-          });
+          // Validation is strictly delegated to the backend, which resolves dynamic per-user permissions.
+          return [];
         }
 
         document.getElementById('btn-new-work')!.addEventListener('click', openWorkModal);
@@ -285,6 +282,7 @@ const { id } = Astro.params;
         document.getElementById('work-modal-save')!.addEventListener('click', async () => {
           const title = titleInput.value.trim() || undefined;
           const saveBtn = document.getElementById('work-modal-save') as HTMLButtonElement;
+          let createdWorkId: number | null = null;
 
           try {
             saveBtn.disabled = true;
@@ -295,10 +293,10 @@ const { id } = Astro.params;
               const names = unsupportedFiles.map((file) => file.name).join(', ');
               showToast(`Unsupported file extension: ${names}`, 'error');
               resetUploadProgress();
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'Create Work';
               return;
             }
-
-            const { work } = await api.createWork(subjectId, title);
 
             if (selectedFiles.length > 0) {
               const totalSize = selectedFiles.reduce((a, f) => a + f.size, 0);
@@ -309,7 +307,12 @@ const { id } = Astro.params;
                 saveBtn.textContent = 'Create Work';
                 return;
               }
+            }
 
+            const { work } = await api.createWork(subjectId, title);
+            createdWorkId = work.id;
+
+            if (selectedFiles.length > 0) {
               document.getElementById('upload-progress')!.style.display = 'block';
               document.getElementById('upload-status')!.textContent = `Uploading ${selectedFiles.length} file(s)...`;
               document.getElementById('progress-fill')!.style.width = '50%';
@@ -324,6 +327,9 @@ const { id } = Astro.params;
             workModal.style.display = 'none';
             await loadWorks();
           } catch (err: any) {
+            if (createdWorkId) {
+              try { await api.deleteWork(createdWorkId); } catch (e) {}
+            }
             resetUploadProgress();
             showToast(err.message, 'error');
           } finally {

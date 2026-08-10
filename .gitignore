@@ -30,3 +30,6 @@ server/dist/
 
 # Docker persistent data
 docker-data/
+
+# production build output
+*.tar

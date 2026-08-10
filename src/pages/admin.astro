@@ -51,7 +51,7 @@ import { Show } from '@clerk/astro/components';
         <div class="admin-tabs mb-8">
           <button class="admin-tab active" data-tab="overview"><i class="bi bi-speedometer2"></i> Overview</button>
           <button class="admin-tab" data-tab="users"><i class="bi bi-people"></i> Users</button>
-          <button class="admin-tab" data-tab="seo"><i class="bi bi-search"></i> SEO Config</button>
+          <button class="admin-tab" data-tab="seo"><i class="bi bi-gear"></i> Settings</button>
           <button class="admin-tab" data-tab="learn"><i class="bi bi-book"></i> Learn</button>
         </div>
 
@@ -177,9 +177,26 @@ import { Show } from '@clerk/astro/components';
           </div>
         </div>
 
-        <!-- ===== SEO CONFIG TAB ===== -->
+        <!-- ===== SETTINGS TAB ===== -->
         <div id="tab-seo" class="admin-tab-content" style="display: none;">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 16px;">
+            
+            <div class="admin-panel-section">
+              <div class="admin-panel-section__header">
+                <h2 class="text-body-strong"><i class="bi bi-file-earmark-code"></i> File Type Settings</h2>
+              </div>
+              <div class="p-5 flex flex-col gap-6">
+                <p class="text-caption text-muted m-0">Append allowed file extensions for all users (comma separated, e.g. <code>png, webp, mp4</code>). These are merged with default environment variables.</p>
+                <form id="config-form" class="flex flex-col gap-6">
+                  <div>
+                    <label for="config-append-files" class="text-caption text-muted block mb-2 font-medium">Global Allowed Extensions</label>
+                    <input type="text" id="config-append-files" name="append_file_types" class="input w-full px-4 py-3 rounded-md" placeholder="mp4, png, webp" />
+                  </div>
+                  <button type="submit" class="btn btn--primary self-start mt-2">Save File Settings</button>
+                </form>
+              </div>
+            </div>
+
             <div class="admin-panel-section">
               <div class="admin-panel-section__header">
                 <h2 class="text-body-strong"><i class="bi bi-globe"></i> Global SEO Settings</h2>
@@ -620,7 +637,8 @@ import { Show } from '@clerk/astro/components';
                     ${isSuspended
                       ? `<button class="btn btn--dark-utility btn--sm btn-user-restore" data-uid="${user.clerk_id}"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
                          <button class="btn btn--danger btn--sm btn-user-harddelete" data-uid="${user.clerk_id}"><i class="bi bi-trash"></i> Hard Delete</button>`
-                      : `<button class="btn btn--danger btn--sm btn-user-suspend" data-uid="${user.clerk_id}"><i class="bi bi-slash-circle"></i> Suspend</button>`
+                      : `<button class="btn btn--dark-utility btn--sm btn-user-extensions" data-uid="${user.clerk_id}" data-exts="${user.allowed_extensions || ''}"><i class="bi bi-file-earmark-plus"></i> Extensions</button>
+                         <button class="btn btn--danger btn--sm btn-user-suspend" data-uid="${user.clerk_id}"><i class="bi bi-slash-circle"></i> Suspend</button>`
                     }
                   </div>
                 </div>
@@ -654,6 +672,24 @@ import { Show } from '@clerk/astro/components';
                   showToast("User access restored", "success");
                   await loadUsers();
                   await loadOverview();
+                } catch (err: any) {
+                  showToast(err.message || "Action failed", "error");
+                }
+              });
+            });
+
+            // Wire up user extensions buttons
+            container.querySelectorAll(".btn-user-extensions").forEach((btn: any) => {
+              btn.addEventListener("click", async () => {
+                const uid = btn.dataset.uid;
+                const currentExts = btn.dataset.exts || "";
+                const newExts = prompt(`Enter allowed file extensions for user ${uid.slice(0, 16)}… (comma separated):\nLeave blank to remove overrides.`, currentExts);
+                if (newExts === null) return;
+                
+                try {
+                  await api.updateUserExtensions(uid, newExts);
+                  showToast("User extensions updated", "success");
+                  await loadUsers();
                 } catch (err: any) {
                   showToast(err.message || "Action failed", "error");
                 }
@@ -739,6 +775,20 @@ import { Show } from '@clerk/astro/components';
           }
         }
 
+        async function loadConfigData() {
+          try {
+            const res = await api.getAdminConfig();
+            if (res.config) {
+              const appendFilesInput = document.getElementById('config-append-files') as HTMLInputElement;
+              if (appendFilesInput && res.config.append_file_types) {
+                appendFilesInput.value = res.config.append_file_types;
+              }
+            }
+          } catch (err) {
+            console.error('Failed to load Config data', err);
+          }
+        }
+
         // Handle SEO form submit
         const seoForm = document.getElementById('seo-form');
         if (seoForm) {
@@ -755,6 +805,29 @@ import { Show } from '@clerk/astro/components';
               loadSEOData();
             } catch (err) {
               showToast('Failed to save SEO settings', 'error');
+            } finally {
+              const btn = (e.target as HTMLElement).querySelector('button');
+              if (btn) btn.disabled = false;
+            }
+          });
+        }
+
+        // Handle Config form submit
+        const configForm = document.getElementById('config-form');
+        if (configForm) {
+          configForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+              const btn = (e.target as HTMLElement).querySelector('button');
+              if (btn) btn.disabled = true;
+              await api.updateAdminConfig(data);
+              showToast('Config saved successfully', 'success');
+              loadConfigData();
+            } catch (err) {
+              showToast('Failed to save config', 'error');
             } finally {
               const btn = (e.target as HTMLElement).querySelector('button');
               if (btn) btn.disabled = false;
@@ -804,6 +877,7 @@ import { Show } from '@clerk/astro/components';
         // Initial load
         await loadOverview();
         await loadSEOData();
+        await loadConfigData();
       });
     </script>
 

@@ -7,13 +7,13 @@ import { validateUploadCandidate } from '../services/validation.service.js';
 import { writeAuditLog } from '../services/audit.service.js';
 import { updateUserUsage } from '../services/usage.service.js';
 import { evaluateAbuseSignals } from '../services/moderation.service.js';
-import { getSecurityConfig } from '../services/config.service.js';
+import { getSecurityConfig, getDynamicSecurityConfig } from '../services/config.service.js';
 import { rateLimiter } from '../services/rate-limit.service.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { requireNotSuspended } from '../auth/suspension.js';
+import sharp from 'sharp';
 
 const securityConfig = getSecurityConfig();
-const ALLOWED_EXTENSIONS = new Set(securityConfig.allowedExtensions);
 
 // Text-based extensions that support preview
 const TEXT_EXTENSIONS = new Set([
@@ -112,6 +112,11 @@ export function createFileRoutes(storage: StorageAdapter) {
           }
           const data = Buffer.concat(chunks);
 
+          // Fetch dynamic security config
+          const dynamicConfig = await getDynamicSecurityConfig(db, request.userId);
+          const ALLOWED_EXTENSIONS = new Set(dynamicConfig.allowedExtensions);
+          const MAX_UPLOAD_SIZE = dynamicConfig.maxUploadBytes;
+
           const validation = validateUploadCandidate({
             filename,
             size: data.length,
@@ -128,13 +133,6 @@ export function createFileRoutes(storage: StorageAdapter) {
           }
 
           const ext = validation.extension ?? getExtension(filename);
-          totalSize += data.length;
-          if (totalSize > MAX_UPLOAD_SIZE) {
-            return reply.status(400).send({
-              error: `Total upload size exceeds ${Math.round(MAX_UPLOAD_SIZE / (1024 * 1024))} MB limit (current: ${(totalSize / 1024 / 1024).toFixed(1)} MB)`,
-            });
-          }
-
           const sanitized = validation.sanitizedFilename ?? filename;
           const storageKey = buildStorageKey(
             request.userId,
@@ -144,8 +142,34 @@ export function createFileRoutes(storage: StorageAdapter) {
             sanitized,
           );
           const contentType = validation.contentType ?? getContentType(ext);
+          let finalData = data;
+          let finalMime = contentType;
 
-          await storage.upload(storageKey, data, contentType);
+          // Apply intelligent image compression (skip SVG and non-images)
+          if (contentType.startsWith('image/') && contentType !== 'image/svg+xml') {
+            try {
+              const image = sharp(data).resize(1920, 1920, { fit: 'inside', withoutEnlargement: true });
+              if (contentType === 'image/jpeg' || contentType === 'image/jpg') {
+                finalData = await image.jpeg({ quality: 82 }).toBuffer();
+              } else if (contentType === 'image/png') {
+                finalData = await image.png({ quality: 82, compressionLevel: 9 }).toBuffer();
+              } else if (contentType === 'image/webp') {
+                finalData = await image.webp({ quality: 82 }).toBuffer();
+              }
+            } catch (err) {
+              console.warn('Image compression failed, using original buffer', err);
+            }
+          }
+
+          const finalSize = finalData.length;
+          totalSize += finalSize;
+          if (totalSize > MAX_UPLOAD_SIZE) {
+            return reply.status(400).send({
+              error: `Total upload size exceeds ${Math.round(MAX_UPLOAD_SIZE / (1024 * 1024))} MB limit (current: ${(totalSize / 1024 / 1024).toFixed(1)} MB)`,
+            });
+          }
+
+          await storage.upload(storageKey, finalData, finalMime);
 
           await writeAuditLog({
             userId: request.userId,
@@ -157,14 +181,14 @@ export function createFileRoutes(storage: StorageAdapter) {
             metadata: {
               workId: request.params.workId,
               filename: sanitized,
-              fileSize: data.length,
-              mimeType: contentType,
+              fileSize: finalSize,
+              mimeType: finalMime,
             },
           });
 
           await updateUserUsage({
             userId: request.userId,
-            storageDelta: data.length,
+            storageDelta: finalSize,
             fileDelta: 1,
             uploadDelta: 1,
             timestamp: new Date().toISOString(),
@@ -184,9 +208,9 @@ export function createFileRoutes(storage: StorageAdapter) {
               filename,
               sanitizedFilename: sanitized,
               extension: ext,
-              sizeBytes: data.length,
+              sizeBytes: finalSize,
               storageKey,
-              contentType,
+              contentType: finalMime,
             })
             .returning();
 

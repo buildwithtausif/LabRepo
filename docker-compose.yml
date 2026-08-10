@@ -140,6 +140,22 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
+    command: >
+      /bin/sh -c "
+        mkdir -p /etc/nginx/ssl_config;
+        if [ -f /etc/letsencrypt/live/labrepo.app/fullchain.pem ]; then
+          echo 'Using Let''s Encrypt certificates';
+          echo 'ssl_certificate /etc/letsencrypt/live/labrepo.app/fullchain.pem;' > /etc/nginx/ssl_config/ssl.conf;
+          echo 'ssl_certificate_key /etc/letsencrypt/live/labrepo.app/privkey.pem;' >> /etc/nginx/ssl_config/ssl.conf;
+          echo 'return 301 https://$$host$$request_uri;' > /etc/nginx/ssl_config/http_redirect.conf;
+        else
+          echo 'Using local development certificates';
+          echo 'ssl_certificate /etc/nginx/certs/fullchain.pem;' > /etc/nginx/ssl_config/ssl.conf;
+          echo 'ssl_certificate_key /etc/nginx/certs/privkey.pem;' >> /etc/nginx/ssl_config/ssl.conf;
+          echo '' > /etc/nginx/ssl_config/http_redirect.conf;
+        fi;
+        exec nginx -g 'daemon off;'
+      "
     depends_on:
       frontend:
         condition: service_healthy

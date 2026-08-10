@@ -43,3 +43,34 @@ export function getSecurityConfig(): SecurityConfig {
     allowedExtensions: parseListEnv('ALLOWED_FILE_TYPES', DEFAULT_ALLOWED_EXTENSIONS),
   };
 }
+
+export async function getDynamicSecurityConfig(db: any, userId?: string): Promise<SecurityConfig> {
+  const { siteSettings, users } = await import('../db/schema.js');
+  const { eq } = await import('drizzle-orm');
+  
+  const baseConfig = getSecurityConfig();
+  let finalExtensions = [...baseConfig.allowedExtensions];
+
+  try {
+    const [globalSetting] = await db.select().from(siteSettings).where(eq(siteSettings.key, 'config.append_file_types')).limit(1);
+    if (globalSetting && globalSetting.value) {
+      const globals = globalSetting.value.split(',').map((v: string) => v.trim().toLowerCase()).filter(Boolean);
+      finalExtensions.push(...globals);
+    }
+
+    if (userId) {
+      const [user] = await db.select({ allowedExtensions: users.allowedExtensions }).from(users).where(eq(users.clerkId, userId)).limit(1);
+      if (user && user.allowedExtensions) {
+        const userExts = user.allowedExtensions.split(',').map((v: string) => v.trim().toLowerCase()).filter(Boolean);
+        finalExtensions.push(...userExts);
+      }
+    }
+  } catch (e) {
+    console.warn('[ConfigService] Failed to load dynamic configuration from DB:', e);
+  }
+
+  return {
+    ...baseConfig,
+    allowedExtensions: Array.from(new Set(finalExtensions)),
+  };
+}
