@@ -13,6 +13,8 @@ RUN npm ci
 COPY . .
 
 # Build the Astro project
+ARG PUBLIC_CLERK_PUBLISHABLE_KEY
+ENV PUBLIC_CLERK_PUBLISHABLE_KEY=$PUBLIC_CLERK_PUBLISHABLE_KEY
 RUN npm run build
 
 # ---- Runtime stage ----

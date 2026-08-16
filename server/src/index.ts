@@ -12,6 +12,7 @@ import { createFileRoutes } from './routes/files.js';
 import { createDownloadRoutes } from './routes/download.js';
 import { createRecycleBinRoutes } from './routes/recycle-bin.js';
 import { searchRoutes } from './routes/search.js';
+import { publicRoutes } from './routes/public.js';
 import { startCleanupJob } from './jobs/cleanup.js';
 import { getSecurityConfig } from './services/config.service.js';
 
@@ -88,6 +89,9 @@ async function start() {
 
   // Health check (no auth required)
   fastify.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+
+  // Public announcements API (no auth required)
+  await fastify.register(publicRoutes);
 
   // Register auth plugin (all routes below require authentication)
   await fastify.register(clerkAuth);

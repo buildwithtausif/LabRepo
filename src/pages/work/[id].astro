@@ -110,7 +110,7 @@ const { id } = Astro.params;
       <div id="preview-content-container" class="preview-panel__content relative">
         <div id="preview-default-content" class="w-full h-full"></div>
         
-        <ZoomPan id="preview-zoom-container" class="hidden">
+        <ZoomPan id="preview-zoom-container" class="hidden absolute inset-0">
           <div id="preview-zoom-slot-content" class="w-full h-full flex items-center justify-center"></div>
         </ZoomPan>
 
@@ -154,7 +154,7 @@ const { id } = Astro.params;
         subjectLink.href = `/subject/${work.subject_id}`;
         subjectLink.textContent = work.subject_name;
 
-        const textExts = new Set(['py','js','mjs','cjs','jsx','ts','tsx','c','cpp','h','hpp','java','kt','cs','go','rs','swift','php','rb','r','scala','sql','html','css','scss','json','yaml','yml','xml','md','txt','csv','env','sh','bat','ps1','toml','ini','cfg','conf','log','dockerfile','tex','rtf']);
+        const textExts = new Set(['ipynb','py','js','mjs','cjs','jsx','ts','tsx','c','cpp','h','hpp','java','kt','cs','go','rs','swift','php','rb','r','scala','sql','html','css','scss','json','yaml','yml','xml','md','txt','csv','env','sh','bat','ps1','toml','ini','cfg','conf','log','dockerfile','tex','rtf']);
         const imageExts = new Set(['jpg', 'jpeg', 'png', 'webp', 'svg', 'gif']);
 
         const langMap: Record<string, string> = {
@@ -348,17 +348,17 @@ const { id } = Astro.params;
         let isFullscreen = false;
         document.getElementById('preview-fullscreen')!.addEventListener('click', () => {
           isFullscreen = !isFullscreen;
-          const panel = document.getElementById('preview-panel')!;
-          const btnIcon = document.querySelector('#preview-fullscreen i')!;
+          const panel = document.getElementById('preview-panel');
+          const btnIcon = document.querySelector('#preview-fullscreen i') || document.querySelector('#preview-fullscreen svg');
           
           if (isFullscreen) {
-            panel.classList.add('preview-panel--fullscreen');
-            btnIcon.classList.remove('bi-arrows-angle-expand');
-            btnIcon.classList.add('bi-arrows-angle-contract');
+            panel?.classList.add('preview-panel--fullscreen');
+            btnIcon?.classList.remove('bi-arrows-angle-expand');
+            btnIcon?.classList.add('bi-arrows-angle-contract');
           } else {
-            panel.classList.remove('preview-panel--fullscreen');
-            btnIcon.classList.remove('bi-arrows-angle-contract');
-            btnIcon.classList.add('bi-arrows-angle-expand');
+            panel?.classList.remove('preview-panel--fullscreen');
+            btnIcon?.classList.remove('bi-arrows-angle-contract');
+            btnIcon?.classList.add('bi-arrows-angle-expand');
           }
         });
         document.getElementById('preview-minimize')!.addEventListener('click', closePreview);
@@ -809,6 +809,33 @@ const { id } = Astro.params;
         .bottom-sheet-handle { position: static; flex: 0 0 auto; padding: 8px 0 5px; }
         .preview-panel__content { min-height: 0; overflow: auto; }
         .preview-code { padding: 16px; font-size: 13px; line-height: 1.62; }
+
+        /* Mobile file card layout */
+        .store-utility-card .flex.items-center.justify-between {
+          flex-direction: column;
+          align-items: flex-start !important;
+        }
+        .store-utility-card .flex.items-center.gap-4 {
+          width: 100%;
+        }
+        .store-utility-card .flex.gap-2.shrink-0 {
+          width: 100%;
+          justify-content: flex-end;
+          margin-top: 8px;
+        }
+        .store-utility-card .text-body-strong.truncate {
+          white-space: normal;
+          word-break: break-word;
+          overflow: visible;
+        }
+        .preview-panel__header .flex.items-center.gap-3.min-w-0 {
+          min-width: 0;
+          flex: 1;
+          overflow: hidden;
+        }
+        .preview-panel__header #preview-filename {
+          max-width: 120px;
+        }
       }
       @keyframes slideUp {
         from { transform: translateY(100%); }

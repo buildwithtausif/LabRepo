@@ -4,12 +4,14 @@ export interface Props {
   maxZoom?: number;
   initialZoom?: number;
   class?: string;
+  id?: string;
 }
 
-const { minZoom = 0.5, maxZoom = 5, initialZoom = 1, class: className = '' } = Astro.props;
+const { minZoom = 0.5, maxZoom = 5, initialZoom = 1, class: className = '', id } = Astro.props;
 ---
 
 <zoom-pan-container 
+  id={id}
   class={`zoom-pan-wrapper ${className}`} 
   data-min-zoom={minZoom} 
   data-max-zoom={maxZoom} 

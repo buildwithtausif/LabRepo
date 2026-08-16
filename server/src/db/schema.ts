@@ -203,3 +203,26 @@ export const siteSettings = pgTable('site_settings', {
   updatedAt: text('updated_at').notNull().default(nowIso),
 });
 
+
+// ─── Announcements ────────────────────────────────────
+export const announcements = pgTable(
+  'announcements',
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    title: text('title').notNull(),
+    message: text('message').notNull(),
+    url: text('url'),
+    urlLabel: text('url_label'),
+    type: text('type').notNull().default('info'), // info, success, warning, critical
+    isActive: integer('is_active').notNull().default(1),
+    startsAt: text('starts_at'),
+    expiresAt: text('expires_at'),
+    createdBy: text('created_by').notNull(),
+    createdAt: text('created_at').notNull().default(nowIso),
+    updatedAt: text('updated_at').notNull().default(nowIso),
+  },
+  (table) => [
+    index('idx_announcements_active').on(table.isActive),
+    check('announcements_type_check', sql`${table.type} IN ('info', 'success', 'warning', 'critical')`),
+  ],
+);

@@ -12,6 +12,9 @@ declare module 'fastify' {
   }
 }
 
+const DEV_ADMIN_ID = process.env.ADMIN_USER_ID || process.env.CLERK_ADMIN_USER_ID || 'mock_dev_admin';
+const DEV_TEST_USER_ID = 'mock_test_user';
+
 /**
  * Clerk authentication plugin for Fastify.
  * Verifies JWT from the Authorization header and decorates the request with userId.
@@ -26,7 +29,11 @@ async function clerkAuthPlugin(fastify: FastifyInstance): Promise<void> {
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       if (process.env.ENV === 'development') {
-        request.userId = process.env.ADMIN_USER_ID || process.env.CLERK_ADMIN_USER_ID || 'mock_dev_admin';
+        // Read dev role from cookie forwarded by the frontend
+        const cookieHeader = request.headers.cookie || '';
+        const match = cookieHeader.match(/devmode_role=(devadmin|testuser)/);
+        const role = match?.[1] || 'devadmin';
+        request.userId = role === 'testuser' ? DEV_TEST_USER_ID : DEV_ADMIN_ID;
         return;
       }
       return reply.status(401).send({ error: 'Authentication required' });
@@ -36,7 +43,11 @@ async function clerkAuthPlugin(fastify: FastifyInstance): Promise<void> {
 
     try {
       if (process.env.ENV === 'development') {
-        request.userId = process.env.ADMIN_USER_ID || process.env.CLERK_ADMIN_USER_ID || 'mock_dev_admin';
+        // In dev mode, still check the cookie even if a token is present
+        const cookieHeader = request.headers.cookie || '';
+        const match = cookieHeader.match(/devmode_role=(devadmin|testuser)/);
+        const role = match?.[1] || 'devadmin';
+        request.userId = role === 'testuser' ? DEV_TEST_USER_ID : DEV_ADMIN_ID;
         return;
       }
 

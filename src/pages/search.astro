@@ -84,7 +84,7 @@ if (!userId) {
       <div id="search-preview-panel-content-container" class="search-preview-panel__content relative">
         <div id="search-preview-default-content" class="w-full h-full"></div>
         
-        <ZoomPan id="search-preview-zoom-container" class="hidden">
+        <ZoomPan id="search-preview-zoom-container" class="hidden absolute inset-0">
           <div id="search-preview-zoom-slot-content" class="w-full h-full flex items-center justify-center"></div>
         </ZoomPan>
 
@@ -326,17 +326,17 @@ if (!userId) {
         let searchIsFullscreen = false;
         document.getElementById("search-preview-fullscreen")!.addEventListener("click", () => {
           searchIsFullscreen = !searchIsFullscreen;
-          const panel = document.getElementById("search-preview-panel")!;
-          const btnIcon = document.querySelector("#search-preview-fullscreen i")!;
+          const panel = document.getElementById("search-preview-panel");
+          const btnIcon = document.querySelector("#search-preview-fullscreen i");
           
           if (searchIsFullscreen) {
-            panel.classList.add("search-preview-panel--fullscreen");
-            btnIcon.classList.remove("bi-arrows-angle-expand");
-            btnIcon.classList.add("bi-arrows-angle-contract");
+            panel?.classList.add("search-preview-panel--fullscreen");
+            btnIcon?.classList.remove("bi-arrows-angle-expand");
+            btnIcon?.classList.add("bi-arrows-angle-contract");
           } else {
-            panel.classList.remove("search-preview-panel--fullscreen");
-            btnIcon.classList.remove("bi-arrows-angle-contract");
-            btnIcon.classList.add("bi-arrows-angle-expand");
+            panel?.classList.remove("search-preview-panel--fullscreen");
+            btnIcon?.classList.remove("bi-arrows-angle-contract");
+            btnIcon?.classList.add("bi-arrows-angle-expand");
           }
         });
         

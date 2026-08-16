@@ -151,11 +151,8 @@ export const api = {
   getAdminSummary: () => request('/admin/summary'),
   getAdminUsers: () => request('/admin/users'),
   getAuditLogs: () => request('/admin/audit-logs'),
-  getAbuseFlags: () => request('/admin/abuse-flags'),
-  resolveFlag: (id: number, notes?: string) => request(`/admin/flags/${id}/resolve`, {
-    method: 'POST',
-    body: JSON.stringify({ notes }),
-  }),
+  getAbuseFlags: (page?: number, limit?: number) => request(`/admin/abuse-flags?page=${page || 1}&limit=${limit || 50}`),
+  resolveAbuseFlag: (id: string, resolutionNotes: string) => request(`/admin/flags/${id}/resolve`, { method: 'POST', body: JSON.stringify({ resolutionNotes }) }),
   suspendUserUploads: (userId: string, notes?: string) => request(`/admin/users/${userId}/suspend-uploads`, {
     method: 'POST',
     body: JSON.stringify({ notes }),
@@ -181,6 +178,12 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ extensions }),
   }),
+
+  // Announcements API
+  getAdminAnnouncements: () => request('/admin/announcements'),
+  createAdminAnnouncement: (data: any) => request('/admin/announcements', { method: 'POST', body: JSON.stringify(data) }),
+  updateAdminAnnouncement: (id: string, data: any) => request(`/admin/announcements/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAdminAnnouncement: (id: string) => request(`/admin/announcements/${id}`, { method: 'DELETE' }),
 
   // Search
   search: (params: {

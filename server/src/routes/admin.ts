@@ -1,10 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import type { StorageAdapter } from '../storage/adapter.js';
 import { getDb } from '../db/runtime.js';
-import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings, files, works, subjects, recycleBin, dailyUsageHistory } from '../db/schema.js';
+import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings, files, works, subjects, recycleBin, dailyUsageHistory, announcements } from '../db/schema.js';
 import { writeAuditLog } from '../services/audit.service.js';
-import { eq, sql, count, sum } from 'drizzle-orm';
+import { eq, sql, count, sum, desc } from 'drizzle-orm';
 import { clerkClient } from '../auth/clerk.js';
+import sharp from 'sharp';
 
 async function isAdminUser(userId: string): Promise<boolean> {
   if (userId === process.env.ADMIN_USER_ID || userId === process.env.CLERK_ADMIN_USER_ID) return true;
@@ -414,10 +415,24 @@ export function createAdminRoutes(storage: StorageAdapter) {
           }
           const data = Buffer.concat(chunks);
           
-          // Store the image in the configured storage under a public-accessible prefix if possible
+          let processedData = data;
+          let mimetype = 'image/jpeg';
+          let extension = 'jpg';
+
+          try {
+            processedData = await sharp(data)
+              .resize(1200, 630, { fit: 'inside', withoutEnlargement: true })
+              .jpeg({ quality: 80, progressive: true })
+              .toBuffer();
+          } catch (err) {
+            console.error('Sharp processing error:', err);
+            mimetype = part.mimetype as string;
+            extension = mimetype === 'image/png' ? 'png' : 'jpg';
+          }
+          
           if (storage) {
-            const key = `public/seo/og-image-${Date.now()}.${part.mimetype === 'image/png' ? 'png' : 'jpg'}`;
-            await storage.upload(key, data, part.mimetype);
+            const key = `public/seo/og-image-${Date.now()}.${extension}`;
+            await storage.upload(key, processedData, mimetype);
             ogImageUrl = `/api/public/storage/${key}`;
             
             const db = getDb();
@@ -434,5 +449,81 @@ export function createAdminRoutes(storage: StorageAdapter) {
       
       return { success: true, url: ogImageUrl };
     });
+    // Announcements CRUD
+    fastify.get('/api/admin/announcements', async () => {
+      const db = getDb();
+      const list = await db.select().from(announcements).orderBy(desc(announcements.createdAt));
+      return { announcements: list };
+    });
+
+    fastify.post('/api/admin/announcements', async (request, reply) => {
+      const db = getDb();
+      const body = request.body as any;
+      const [record] = await db.insert(announcements).values({
+        title: body.title,
+        message: body.message,
+        url: body.url || null,
+        urlLabel: body.urlLabel || null,
+        type: body.type || 'info',
+        isActive: body.isActive !== undefined ? body.isActive : 1,
+        startsAt: body.startsAt || null,
+        expiresAt: body.expiresAt || null,
+        createdBy: request.userId,
+      }).returning();
+      
+      await writeAuditLog({
+        userId: request.userId,
+        action: 'admin_created_announcement',
+        resourceType: 'announcement',
+        resourceId: record.id.toString(),
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+      });
+      return { success: true, announcement: record };
+    });
+
+    fastify.put('/api/admin/announcements/:id', async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+      const db = getDb();
+      const [record] = await db.update(announcements).set({
+        title: body.title,
+        message: body.message,
+        url: body.url || null,
+        urlLabel: body.urlLabel || null,
+        type: body.type,
+        isActive: body.isActive,
+        startsAt: body.startsAt || null,
+        expiresAt: body.expiresAt || null,
+        updatedAt: new Date().toISOString()
+      }).where(eq(announcements.id, parseInt(id))).returning();
+
+      await writeAuditLog({
+        userId: request.userId,
+        action: 'admin_updated_announcement',
+        resourceType: 'announcement',
+        resourceId: id,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+      });
+      return { success: true, announcement: record };
+    });
+
+    fastify.delete('/api/admin/announcements/:id', async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const db = getDb();
+      await db.delete(announcements).where(eq(announcements.id, parseInt(id)));
+      
+      await writeAuditLog({
+        userId: request.userId,
+        action: 'admin_deleted_announcement',
+        resourceType: 'announcement',
+        resourceId: id,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+      });
+      return { success: true };
+    });
+
   };
 }

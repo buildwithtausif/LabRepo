@@ -6,6 +6,8 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: labrepo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-labrepo_secret}
@@ -98,6 +100,8 @@ services:
     image: labrepo-frontend
     build:
       context: .
+      args:
+        PUBLIC_CLERK_PUBLISHABLE_KEY: ${PUBLIC_CLERK_PUBLISHABLE_KEY}
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file: .env
