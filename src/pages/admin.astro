@@ -3,6 +3,24 @@ import Layout from '../Layouts/Layout.astro';
 import { Show } from '@clerk/astro/components';
 import { defaultSEO } from '../utils/seo';
 
+const isDevBypass = process.env.ENV === 'development';
+
+if (!isDevBypass) {
+  const user = await Astro.locals.currentUser();
+  if (!user) {
+    return Astro.redirect('/');
+  }
+
+  // Strict role check
+  if (
+    user.publicMetadata?.role !== 'admin' &&
+    user.id !== process.env.ADMIN_USER_ID &&
+    user.id !== process.env.CLERK_ADMIN_USER_ID
+  ) {
+    return Astro.redirect('/');
+  }
+}
+
 const siteUrl = typeof process !== 'undefined' && process.env.PUBLIC_SITE_URL ? process.env.PUBLIC_SITE_URL : Astro.url.origin;
 const displayUrl = siteUrl.replace(/^https?:\/\//, '');
 ---

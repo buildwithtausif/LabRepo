@@ -4,18 +4,27 @@ import { getDb } from '../db/runtime.js';
 import { users, abuseFlags, auditLogs, userUsageStats, academicSessions, siteSettings, files, works, subjects, recycleBin, dailyUsageHistory } from '../db/schema.js';
 import { writeAuditLog } from '../services/audit.service.js';
 import { eq, sql, count, sum } from 'drizzle-orm';
+import { clerkClient } from '../auth/clerk.js';
 
-function isAdminUser(userId: string): boolean {
-  return userId === process.env.ADMIN_USER_ID || userId === process.env.CLERK_ADMIN_USER_ID;
+async function isAdminUser(userId: string): Promise<boolean> {
+  if (userId === process.env.ADMIN_USER_ID || userId === process.env.CLERK_ADMIN_USER_ID) return true;
+  
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    return user.publicMetadata?.role === 'admin';
+  } catch (err) {
+    return false;
+  }
 }
 
 export function createAdminRoutes(storage: StorageAdapter) {
   return async function adminRoutes(fastify: FastifyInstance): Promise<void> {
     fastify.addHook('preHandler', async (request, reply) => {
-    if (!isAdminUser(request.userId)) {
-      return reply.status(403).send({ error: 'Admin access required' });
-    }
-  });
+      const isAdmin = await isAdminUser(request.userId);
+      if (!isAdmin) {
+        return reply.status(403).send({ error: 'Admin access required' });
+      }
+    });
 
   // Summary stats
   fastify.get('/api/admin/summary', async () => {
