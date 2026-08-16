@@ -1,5 +1,7 @@
 ---
 import Layout from "../Layouts/Layout.astro";
+import ZoomPan from "../components/ZoomPan.astro";
+import { NotebookIsland } from "../components/NotebookIsland.tsx";
 
 const { userId } = Astro.locals.auth();
 if (!userId) {
@@ -78,7 +80,17 @@ if (!userId) {
         </div>
         <button class="btn btn--primary btn--sm" id="search-preview-download"><i class="bi bi-download"></i> Download</button>
       </div>
-      <div class="search-preview-panel__content" id="search-preview-content"></div>
+      <div id="search-preview-panel-content-container" class="search-preview-panel__content relative">
+        <div id="search-preview-default-content" class="w-full h-full"></div>
+        
+        <ZoomPan id="search-preview-zoom-container" class="hidden">
+          <div id="search-preview-zoom-slot-content" class="w-full h-full flex items-center justify-center"></div>
+        </ZoomPan>
+
+        <div id="search-preview-notebook-container" class="hidden w-full h-full overflow-y-auto">
+          <NotebookIsland client:load />
+        </div>
+      </div>
     </div>
 
     <script>
@@ -88,7 +100,7 @@ if (!userId) {
         const downloadBlob = (window as any).__labrepo_downloadBlob;
         const formatSize = (window as any).__labrepo_formatSize;
         const formatRelativeTime = (window as any).__labrepo_formatRelativeTime;
-        const textExts = new Set(['py','js','mjs','cjs','jsx','ts','tsx','c','cpp','h','hpp','java','kt','cs','go','rs','swift','php','rb','r','scala','sql','html','css','scss','json','yaml','yml','xml','md','txt','csv','env','sh','bat','ps1','toml','ini','cfg','conf','log','dockerfile','tex','rtf']);
+        const textExts = new Set(['ipynb','py','js','mjs','cjs','jsx','ts','tsx','c','cpp','h','hpp','java','kt','cs','go','rs','swift','php','rb','r','scala','sql','html','css','scss','json','yaml','yml','xml','md','txt','csv','env','sh','bat','ps1','toml','ini','cfg','conf','log','dockerfile','tex','rtf']);
         const langMap: Record<string, string> = {
           py: 'python', js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
           c: 'c', h: 'c', hpp: 'cpp', cpp: 'cpp', java: 'java', kt: 'kotlin', cs: 'csharp', go: 'go', rs: 'rust', swift: 'swift', php: 'php', rb: 'ruby', r: 'r', scala: 'scala', sql: 'sql',
@@ -257,16 +269,53 @@ if (!userId) {
           currentPreviewId = fileId;
           previewPanel.style.display = "flex";
           document.getElementById("search-preview-filename")!.textContent = filename;
-          document.getElementById("search-preview-content")!.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+          
+          const defaultContent = document.getElementById("search-preview-default-content")!;
+          const zoomContainer = document.getElementById("search-preview-zoom-container") as any;
+          const zoomSlot = document.getElementById("search-preview-zoom-slot-content")!;
+          const notebookContainer = document.getElementById("search-preview-notebook-container")!;
+          
+          defaultContent.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+          defaultContent.classList.remove('hidden');
+          zoomContainer.classList.add('hidden');
+          notebookContainer.classList.add('hidden');
+          window.dispatchEvent(new Event('clear-notebook'));
+          
+          if (zoomContainer.resetState) zoomContainer.resetState();
+
           try {
             const result = await api.previewFile(fileId);
             document.getElementById("search-preview-size")!.textContent = formatSize(result.file.size_bytes);
+            
+            if (extension === 'ipynb') {
+              defaultContent.classList.add('hidden');
+              zoomContainer.classList.add('hidden');
+              notebookContainer.classList.remove('hidden');
+              window.dispatchEvent(new CustomEvent('preview-notebook', { detail: { content: result.content } }));
+              return;
+            }
+
             const escaped = result.content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            document.getElementById("search-preview-content")!.innerHTML = `<pre class="search-preview-code"><code class="language-${langMap[extension] || 'plaintext'}">${escaped}</code></pre>`;
-            const code = document.querySelector("#search-preview-content code");
-            if (code && (window as any).hljs) (window as any).hljs.highlightElement(code);
+            
+            defaultContent.classList.add('hidden');
+            notebookContainer.classList.add('hidden');
+            zoomContainer.classList.remove('hidden');
+            
+            zoomSlot.innerHTML = `
+              <div style="width: 100%; height: 100%; display: flex; align-items: flex-start; justify-content: flex-start; padding: 24px;">
+                <pre class="search-preview-code" style="margin: 0;"><code class="language-${langMap[extension] || 'plaintext'}">${escaped}</code></pre>
+              </div>
+            `;
+            
+            const code = zoomSlot.querySelector("code");
+            if (code && (window as any).hljs) {
+              (window as any).hljs.highlightElement(code);
+            }
           } catch (error: any) {
-            document.getElementById("search-preview-content")!.innerHTML = '<div class="empty-state"><p style="color: var(--color-danger);">Failed to load preview</p></div>';
+            defaultContent.classList.remove('hidden');
+            zoomContainer.classList.add('hidden');
+            notebookContainer.classList.add('hidden');
+            defaultContent.innerHTML = '<div class="empty-state"><p style="color: var(--color-danger);">Failed to load preview</p></div>';
           }
         }
 

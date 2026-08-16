@@ -1,6 +1,7 @@
 ---
 import Layout from '../../Layouts/Layout.astro'
 import ZoomPan from '../../components/ZoomPan.astro'
+import { NotebookIsland } from '../../components/NotebookIsland.tsx'
 
 const { userId } = Astro.locals.auth();
 if (!userId) {
@@ -109,6 +110,10 @@ const { id } = Astro.params;
         <ZoomPan id="preview-zoom-container" class="hidden">
           <div id="preview-zoom-slot-content" class="w-full h-full flex items-center justify-center"></div>
         </ZoomPan>
+
+        <div id="preview-notebook-container" class="hidden w-full h-full overflow-y-auto">
+          <NotebookIsland client:load />
+        </div>
       </div>
     </div>
 
@@ -255,10 +260,14 @@ const { id } = Astro.params;
           const defaultContent = document.getElementById('preview-default-content')!;
           const zoomContainer = document.getElementById('preview-zoom-container') as any;
           const zoomSlot = document.getElementById('preview-zoom-slot-content')!;
+          const notebookContainer = document.getElementById('preview-notebook-container')!;
           
           defaultContent.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
           defaultContent.classList.remove('hidden');
           zoomContainer.classList.add('hidden');
+          notebookContainer.classList.add('hidden');
+          window.dispatchEvent(new Event('clear-notebook'));
+          
           if (zoomContainer.resetState) zoomContainer.resetState();
 
           if (imageExts.has(ext)) {
@@ -282,20 +291,31 @@ const { id } = Astro.params;
             const result = await api.previewFile(fileId);
             document.getElementById('preview-size')!.textContent = formatSize(result.file.size_bytes);
             
+            if (ext === 'ipynb') {
+              defaultContent.classList.add('hidden');
+              zoomContainer.classList.add('hidden');
+              notebookContainer.classList.remove('hidden');
+              window.dispatchEvent(new CustomEvent('preview-notebook', { detail: { content: result.content } }));
+              return;
+            }
+
             const lang = langMap[ext] || 'plaintext';
             const escaped = result.content
               .replace(/&/g, '&amp;')
               .replace(/</g, '&lt;')
               .replace(/>/g, '&gt;');
 
-            defaultContent.classList.remove('hidden');
-            zoomContainer.classList.add('hidden');
+            defaultContent.classList.add('hidden');
+            notebookContainer.classList.add('hidden');
+            zoomContainer.classList.remove('hidden');
             
-            defaultContent.innerHTML = `
-              <pre class="preview-code"><code class="language-${lang}">${escaped}</code></pre>
+            zoomSlot.innerHTML = `
+              <div style="width: 100%; height: 100%; display: flex; align-items: flex-start; justify-content: flex-start; padding: 24px;">
+                <pre class="preview-code" style="margin: 0;"><code class="language-${lang}">${escaped}</code></pre>
+              </div>
             `;
             
-            const codeEl = document.querySelector('#preview-default-content code');
+            const codeEl = zoomSlot.querySelector('code');
             if (codeEl && (window as any).hljs) {
               (window as any).hljs.highlightElement(codeEl);
               if ((window as any).hljs.lineNumbersBlock) {
@@ -303,6 +323,9 @@ const { id } = Astro.params;
               }
             }
           } catch (err: any) {
+            defaultContent.classList.remove('hidden');
+            zoomContainer.classList.add('hidden');
+            notebookContainer.classList.add('hidden');
             defaultContent.innerHTML = `<div class="empty-state"><p style="color: #ff3b30;">Failed to load preview</p></div>`;
           }
         }
