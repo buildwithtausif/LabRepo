@@ -593,7 +593,7 @@ const isAdmin = userId === process.env.ADMIN_USER_ID || userId === process.env.C
       @media (min-width: 900px) {
         #dashboard-page { width: min(100% - 48px, 1420px); padding-block: 34px 58px; }
         .dashboard-frame { display: grid; grid-template-columns: 198px minmax(0, 1fr); overflow: hidden; min-height: 610px; border: 1px solid rgba(255,255,255,.13); border-radius: 24px; background: #1a1b20; box-shadow: 0 25px 80px rgba(0,0,0,.35); }
-        .dashboard-sidebar { display: flex; flex-direction: column; gap: 6px; padding: 28px 12px; background: rgba(0,0,0,.17); border-right: 1px solid var(--color-divider); }
+        .dashboard-sidebar { display: flex; flex-direction: column; gap: 6px; padding: 28px 12px; background: rgba(0,0,0,.17); border-right: 1px solid var(--color-divider); user-select: none; }
         .dashboard-sidebar__label { margin: 0 9px 12px; color: #74737a; font-size: .66rem; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
         .dashboard-sidebar__link { display: flex; align-items: center; gap: 11px; padding: 11px 10px; border-radius: 9px; color: #a5a4aa; font-size: .86rem; transition: color var(--transition-fast), background var(--transition-fast); }
         .dashboard-sidebar__link:hover { color: white; background: rgba(255,255,255,.06); }
@@ -608,7 +608,7 @@ const isAdmin = userId === process.env.ADMIN_USER_ID || userId === process.env.C
         .dashboard-stats strong { color: #f7f6f4; font: 600 1.25rem var(--font-display); letter-spacing: -.05em; }
         .dashboard-stats span { color: var(--color-ink-muted); font-size: .72rem; }
         .dashboard-main #sessions-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 22px !important; }
-        .dashboard-main .dashboard-session-card { padding: 18px; box-shadow: none; }
+        .dashboard-main .dashboard-session-card { padding: 18px; box-shadow: none; user-select: none; }
         .dashboard-main .dashboard-session-card:hover { transform: translateY(-2px); }
         .dashboard-main #sessions-empty { min-height: 360px; }
       }

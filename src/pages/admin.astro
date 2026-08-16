@@ -1,6 +1,10 @@
 ---
 import Layout from '../Layouts/Layout.astro';
 import { Show } from '@clerk/astro/components';
+import { defaultSEO } from '../utils/seo';
+
+const siteUrl = typeof process !== 'undefined' && process.env.PUBLIC_SITE_URL ? process.env.PUBLIC_SITE_URL : Astro.url.origin;
+const displayUrl = siteUrl.replace(/^https?:\/\//, '');
 ---
 
 <Layout title="Admin" showNav={true}>
@@ -232,9 +236,9 @@ import { Show } from '@clerk/astro/components';
                     No image uploaded
                   </div>
                   <div class="p-4 border-t border-divider">
-                    <div class="text-caption text-muted whitespace-nowrap overflow-hidden text-ellipsis mb-1" id="og-site-name">labrepo.example.com</div>
-                    <div class="text-body-strong whitespace-nowrap overflow-hidden text-ellipsis mb-1" id="og-preview-title">LabRepo - Student Workspace</div>
-                    <div class="text-caption text-muted line-clamp-2" id="og-preview-desc">Safely organize and retrieve your college lab work. Never lose a file again.</div>
+                    <div class="text-caption text-muted whitespace-nowrap overflow-hidden text-ellipsis mb-1" id="og-site-name">{displayUrl}</div>
+                    <div class="text-body-strong whitespace-nowrap overflow-hidden text-ellipsis mb-1" id="og-preview-title">{defaultSEO.title}</div>
+                    <div class="text-caption text-muted line-clamp-2" id="og-preview-desc">{defaultSEO.description}</div>
                   </div>
                 </div>
 
@@ -244,7 +248,7 @@ import { Show } from '@clerk/astro/components';
                       <i class="bi bi-folder2-open mr-2"></i> Choose File
                     </label>
                     <span id="seo-image-filename" class="text-caption text-muted whitespace-nowrap overflow-hidden text-ellipsis max-w-full">No file chosen</span>
-                    <input type="file" id="seo-image" name="image" accept="image/jpeg, image/png" class="hidden" onchange="document.getElementById('seo-image-filename').textContent = this.files[0] ? this.files[0].name : 'No file chosen';" />
+                    <input type="file" id="seo-image" name="image" accept="image/jpeg, image/png" class="hidden" />
                   </div>
                   <button type="submit" class="btn btn--primary self-start">Upload Image</button>
                 </form>
@@ -746,29 +750,30 @@ import { Show } from '@clerk/astro/components';
         async function loadSEOData() {
           try {
             const res = await api.getAdminSEO();
-            if (res.seo) {
-              const titleInput = document.getElementById('seo-title') as HTMLInputElement;
-              const descInput = document.getElementById('seo-description') as HTMLTextAreaElement;
-              const twitterInput = document.getElementById('seo-twitter') as HTMLInputElement;
-              const ogPreviewTitle = document.getElementById('og-preview-title');
-              const ogPreviewDesc = document.getElementById('og-preview-desc');
-              const ogPreview = document.getElementById('og-image-preview');
+            const titleInput = document.getElementById('seo-title') as HTMLInputElement;
+            const descInput = document.getElementById('seo-description') as HTMLTextAreaElement;
+            const twitterInput = document.getElementById('seo-twitter') as HTMLInputElement;
+            const ogPreviewTitle = document.getElementById('og-preview-title');
+            const ogPreviewDesc = document.getElementById('og-preview-desc');
+            const ogPreview = document.getElementById('og-image-preview');
 
-              if (res.seo.title) {
-                if (titleInput) titleInput.value = res.seo.title;
-                if (ogPreviewTitle) ogPreviewTitle.textContent = res.seo.title;
-              }
-              if (res.seo.description) {
-                if (descInput) descInput.value = res.seo.description;
-                if (ogPreviewDesc) ogPreviewDesc.textContent = res.seo.description;
-              }
-              if (res.seo.twitterHandle) {
-                if (twitterInput) twitterInput.value = res.seo.twitterHandle;
-              }
+            let finalImage = defaultSEO.image;
+            if (res.seo) {
+              if (res.seo.title && titleInput) titleInput.value = res.seo.title;
+              if (res.seo.description && descInput) descInput.value = res.seo.description;
+              if (res.seo.twitterHandle && twitterInput) twitterInput.value = res.seo.twitterHandle;
               
-              if (res.seo.image && ogPreview) {
-                ogPreview.innerHTML = `<img src="${res.seo.image}" alt="OG Preview" class="w-full h-full object-cover" />`;
-              }
+              if (ogPreviewTitle) ogPreviewTitle.textContent = res.seo.title || defaultSEO.title;
+              if (ogPreviewDesc) ogPreviewDesc.textContent = res.seo.description || defaultSEO.description;
+              
+              if (res.seo.image) finalImage = res.seo.image;
+            } else {
+              if (ogPreviewTitle) ogPreviewTitle.textContent = defaultSEO.title;
+              if (ogPreviewDesc) ogPreviewDesc.textContent = defaultSEO.description;
+            }
+            
+            if (ogPreview) {
+              ogPreview.innerHTML = `<img src="${finalImage}" alt="OG Preview" class="w-full h-full object-cover" />`;
             }
           } catch (err) {
             console.error('Failed to load SEO data', err);
@@ -861,6 +866,8 @@ import { Show } from '@clerk/astro/components';
               
               if (res.ok) {
                 showToast('Image uploaded successfully', 'success');
+                // The image preview is already updated locally via the change listener,
+                // but loadSEOData ensures the saved image is fetched properly as the new fallback source of truth.
                 loadSEOData();
               } else {
                 throw new Error('Upload failed');
@@ -870,6 +877,45 @@ import { Show } from '@clerk/astro/components';
             } finally {
               const btn = (e.target as HTMLElement).querySelector('button');
               if (btn) btn.disabled = false;
+            }
+          });
+        }
+
+        // Real-time SEO input sync
+        const titleInput = document.getElementById('seo-title') as HTMLInputElement;
+        const descInput = document.getElementById('seo-description') as HTMLTextAreaElement;
+        
+        if (titleInput) {
+          titleInput.addEventListener('input', (e) => {
+            const val = (e.target as HTMLInputElement).value;
+            const ogPreviewTitle = document.getElementById('og-preview-title');
+            if (ogPreviewTitle) ogPreviewTitle.textContent = val || defaultSEO.title;
+          });
+        }
+        
+        if (descInput) {
+          descInput.addEventListener('input', (e) => {
+            const val = (e.target as HTMLTextAreaElement).value;
+            const ogPreviewDesc = document.getElementById('og-preview-desc');
+            if (ogPreviewDesc) ogPreviewDesc.textContent = val || defaultSEO.description;
+          });
+        }
+        
+        const fileInput = document.getElementById('seo-image') as HTMLInputElement;
+        if (fileInput) {
+          fileInput.addEventListener('change', (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            const fileNameSpan = document.getElementById('seo-image-filename');
+            const ogPreview = document.getElementById('og-image-preview');
+            
+            if (file) {
+              if (fileNameSpan) fileNameSpan.textContent = file.name;
+              if (ogPreview) {
+                const objectUrl = URL.createObjectURL(file);
+                ogPreview.innerHTML = `<img src="${objectUrl}" alt="OG Preview" class="w-full h-full object-cover" />`;
+              }
+            } else {
+              if (fileNameSpan) fileNameSpan.textContent = 'No file chosen';
             }
           });
         }

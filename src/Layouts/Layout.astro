@@ -12,8 +12,24 @@ const { title, showNav = true, seo: customSeo } = Astro.props as Props
 
 const currentPath = Astro.url.pathname
 const seoProps = { ...customSeo }
-if (title) seoProps.title = title
-const seo = buildSEO(seoProps, currentPath)
+
+// Fetch dynamic SEO settings from backend (SSR)
+let dynamicSeo = {};
+try {
+  const backendUrl = process.env.API_URL || 'http://localhost:3001';
+  const res = await fetch(`${backendUrl}/api/admin/seo`);
+  if (res.ok) {
+    const data = await res.json();
+    if (data.seo) dynamicSeo = data.seo;
+  }
+} catch(e) {
+  // Silent fallback
+}
+
+// Merge priority: Props -> DB Settings -> Defaults
+const finalSeoProps = { ...dynamicSeo, ...seoProps };
+if (title) finalSeoProps.title = title;
+const seo = buildSEO(finalSeoProps, currentPath)
 
 const auth = Astro.locals.auth ? Astro.locals.auth() : null;
 const userId = auth ? auth.userId : null;
