@@ -35,6 +35,13 @@
   --radius-pill: 999px;
   --transition-fast: 180ms ease;
   --transition-base: 300ms ease;
+  
+  /* Z-Index Architecture (Phase 3) */
+  --z-preview-panel: 40;     /* Preview panels (below header) */
+  --z-app-header: 50;        /* Sticky app header */
+  --z-preview-fullscreen: 60;/* Elevated preview panel for fullscreen mode */
+  --z-modal: 100;            /* Modals/overlays */
+  --z-toast: 210;            /* Toasts (always on top) */
 }
 
 *, *::before, *::after { box-sizing: border-box; }

@@ -264,7 +264,7 @@ const isDev = process.env.ENV === 'development';
   .app-header {
     position: sticky;
     top: 0;
-    z-index: 50;
+    z-index: var(--z-app-header);
     background: var(--color-nav-bg);
     backdrop-filter: blur(18px);
     padding: 13px 0;
@@ -387,13 +387,11 @@ const isDev = process.env.ENV === 'development';
   .app-main {
     min-height: calc(100vh - 58px);
     position: relative;
-    z-index: 1;
   }
 
   .app-main--full {
     min-height: 100vh;
     position: relative;
-    z-index: 1;
   }
   
   /* Footer */
