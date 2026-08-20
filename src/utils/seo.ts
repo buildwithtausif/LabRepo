@@ -10,7 +10,7 @@ export interface SEOProps {
 export const defaultSEO = {
   title: 'LabRepo — Student Workspace',
   description: 'Safely organize and retrieve your college lab work. Never lose a file again.',
-  image: '/og-default.jpg', // Default OG image
+  image: '/api/public/storage/public/seo/og-image.jpg', // Default OG image
   type: 'website',
   twitterHandle: '@labrepo',
   siteName: 'LabRepo',
@@ -24,7 +24,7 @@ export function buildSEO(props: SEOProps = {}, currentPath: string = '') {
   // Use a base URL from environment or fallback for canonical/OG links
   const siteUrl = typeof process !== 'undefined' && process.env.PUBLIC_SITE_URL 
     ? process.env.PUBLIC_SITE_URL 
-    : 'https://labrepo.example.com';
+    : 'https://labrepo.app'; // Fallback URL if PUBLIC_SITE_URL is not set
     
   const url = props.canonicalUrl || `${siteUrl}${currentPath}`;
 

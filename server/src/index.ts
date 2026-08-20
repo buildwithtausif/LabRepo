@@ -90,6 +90,20 @@ async function start() {
   // Health check (no auth required)
   fastify.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
+  // Public proxy for storage (e.g. for SEO OG images)
+  fastify.get<{ Params: { '*': string } }>('/api/public/storage/*', async (request, reply) => {
+    const key = request.params['*'];
+    if (!key || key.includes('..')) {
+      return reply.status(400).send({ error: 'Invalid path' });
+    }
+    try {
+      const { data, contentType } = await storage.download(key);
+      return reply.header('Content-Type', contentType).send(data);
+    } catch (err) {
+      return reply.status(404).send({ error: 'Not found' });
+    }
+  });
+
   // Public announcements API (no auth required)
   await fastify.register(publicRoutes);
 
@@ -105,19 +119,6 @@ async function start() {
   await fastify.register(createDownloadRoutes(storage));
   await fastify.register(createRecycleBinRoutes(storage));
   
-  // Public proxy for storage (e.g. for SEO OG images)
-  fastify.get<{ Params: { '*': string } }>('/api/public/storage/*', async (request, reply) => {
-    const key = request.params['*'];
-    if (!key || key.includes('..')) {
-      return reply.status(400).send({ error: 'Invalid path' });
-    }
-    try {
-      const { data, contentType } = await storage.download(key);
-      return reply.header('Content-Type', contentType).send(data);
-    } catch (err) {
-      return reply.status(404).send({ error: 'Not found' });
-    }
-  });
 
   await fastify.register(searchRoutes);
   

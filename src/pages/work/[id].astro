@@ -88,22 +88,27 @@ const { id } = Astro.params;
       <div class="bottom-sheet-handle hide-desktop" id="preview-minimize">
         <div class="handle-bar"></div>
       </div>
-      <div class="preview-panel__header">
-        <div class="flex items-center gap-3 min-w-0">
-          <button type="button" class="btn btn--ghost btn--icon" id="preview-fullscreen" aria-label="Toggle fullscreen">
-            <i class="bi bi-arrows-angle-expand"></i>
-          </button>
-          <button type="button" class="btn btn--ghost btn--icon" id="preview-close" aria-label="Close preview">
-            <i class="bi bi-x-lg"></i>
-          </button>
-          <h3 class="text-body-strong truncate" id="preview-filename">Loading...</h3>
+      <div class="preview-panel__header" style="flex-direction: column; align-items: stretch; gap: 0; padding: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;">
+          <div class="flex items-center gap-3">
+            <button type="button" class="btn btn--ghost btn--icon" id="preview-fullscreen" aria-label="Toggle fullscreen">
+              <i class="bi bi-arrows-angle-expand"></i>
+            </button>
+            <button type="button" class="btn btn--ghost btn--icon" id="preview-close" aria-label="Close preview">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-caption text-muted" id="preview-size"></span>
+            <button class="btn btn--primary btn--sm" id="preview-download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              Download
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-3">
-          <span class="text-caption text-muted" id="preview-size"></span>
-          <button class="btn btn--primary btn--sm" id="preview-download">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-            Download
-          </button>
+        <div style="padding: 10px 16px; background: rgba(0,0,0,0.15); border-top: 1px solid var(--color-divider); display: flex; align-items: center; gap: 8px;">
+           <i class="bi bi-file-earmark-text text-muted" id="preview-file-icon"></i>
+           <h3 class="text-body-strong truncate" id="preview-filename" style="margin: 0; font-size: 0.95rem;">Loading...</h3>
         </div>
       </div>
       
@@ -268,6 +273,7 @@ const { id } = Astro.params;
           defaultContent.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
           defaultContent.classList.remove('hidden');
           zoomContainer.classList.add('hidden');
+          zoomSlot.innerHTML = '';
           notebookContainer.classList.add('hidden');
           window.dispatchEvent(new Event('clear-notebook'));
           
@@ -281,6 +287,8 @@ const { id } = Astro.params;
               
               defaultContent.classList.add('hidden');
               zoomContainer.classList.remove('hidden');
+              zoomContainer.dataset.enablePan = 'true';
+              zoomContainer.dataset.enablePinch = 'true';
               zoomSlot.innerHTML = `<img src="${currentObjectUrl}" style="max-width: 100%; max-height: 100%;" />`;
             } catch (err: any) {
               defaultContent.classList.remove('hidden');
@@ -308,17 +316,18 @@ const { id } = Astro.params;
               .replace(/</g, '&lt;')
               .replace(/>/g, '&gt;');
 
-            defaultContent.classList.add('hidden');
             notebookContainer.classList.add('hidden');
-            zoomContainer.classList.remove('hidden');
+            zoomContainer.classList.add('hidden');
+            zoomSlot.innerHTML = '';
+            defaultContent.classList.remove('hidden');
             
-            zoomSlot.innerHTML = `
-              <div style="width: 100%; height: 100%; display: flex; align-items: flex-start; justify-content: flex-start; padding: 24px;">
+            defaultContent.innerHTML = `
+              <div style="width: 100%; height: 100%; overflow: auto; padding: 24px;">
                 <pre class="preview-code" style="margin: 0;"><code class="language-${lang}">${escaped}</code></pre>
               </div>
             `;
             
-            const codeEl = zoomSlot.querySelector('code');
+            const codeEl = defaultContent.querySelector('code');
             if (codeEl && (window as any).hljs) {
               (window as any).hljs.highlightElement(codeEl);
               if ((window as any).hljs.lineNumbersBlock) {
@@ -568,7 +577,7 @@ const { id } = Astro.params;
       
       .preview-panel {
         position: fixed;
-        top: 58px;
+        top: var(--preview-top, 58px);
         right: 0;
         bottom: 0;
         width: 50%;
@@ -812,21 +821,11 @@ const { id } = Astro.params;
 
         /* Mobile file card layout */
         .store-utility-card .flex.items-center.justify-between {
-          flex-direction: column;
-          align-items: flex-start !important;
-        }
-        .store-utility-card .flex.items-center.gap-4 {
-          width: 100%;
-        }
-        .store-utility-card .flex.gap-2.shrink-0 {
-          width: 100%;
-          justify-content: flex-end;
-          margin-top: 8px;
+          /* Maintain horizontal layout, just allow some squishing */
+          gap: 12px;
         }
         .store-utility-card .text-body-strong.truncate {
-          white-space: normal;
-          word-break: break-word;
-          overflow: visible;
+          /* Keep truncation to prevent massive vertical bloat */
         }
         .preview-panel__header .flex.items-center.gap-3.min-w-0 {
           min-width: 0;

@@ -192,27 +192,29 @@ const displayUrl = siteUrl.replace(/^https?:\/\//, '');
         
         <!-- Announcements Tab -->
         <div id="tab-announcements" class="admin-tab-content" style="display: none;">
-          <div class="flex items-center justify-between" style="margin-bottom: 2rem;">
-            <h2 class="text-display-lg"><i class="bi bi-megaphone text-muted" style="margin-right: 12px;"></i>Announcements</h2>
-            <button class="btn btn--primary" id="btn-create-announcement"><i class="bi bi-plus-lg"></i> New Announcement</button>
+          <div class="flex items-center justify-between flex-wrap gap-3" style="margin-bottom: 2rem;">
+            <h2 class="text-display-lg" style="font-size: clamp(1.2rem, 4vw, 1.6rem); margin: 0;"><i class="bi bi-megaphone text-muted" style="margin-right: 8px;"></i>Announcements</h2>
+            <button class="btn btn--primary btn--sm" id="btn-create-announcement"><i class="bi bi-plus-lg"></i> New</button>
           </div>
 
-          <div id="announcement-form-container" class="admin-card mb-6" style="display: none; text-align: left;">
-            <h3 class="text-body-strong mb-4" id="announcement-form-title">Create Announcement</h3>
-            <form id="announcement-form" class="stack">
+          <div id="announcement-form-container" class="admin-card mb-6" style="display: none; text-align: left; background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0,0,0,0.1)); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.15); border-radius: var(--radius-lg);">
+            <div class="flex items-center justify-between mb-5">
+              <h3 class="text-body-strong m-0 text-[1.1rem]" id="announcement-form-title">Create Announcement</h3>
+            </div>
+            <form id="announcement-form" class="stack" style="gap: 20px;">
               <input type="hidden" id="announcement-id" />
               <div class="form-group">
-                <label class="form-label">Title <span class="text-danger">*</span></label>
-                <input type="text" id="announcement-title" class="form-input" required />
+                <label class="form-label text-muted text-sm font-medium mb-1">Title <span class="text-danger">*</span></label>
+                <input type="text" id="announcement-title" class="input w-full px-4 py-3 rounded-md border-[rgba(255,255,255,0.1)] focus:border-primary bg-black/40" required />
               </div>
               <div class="form-group">
-                <label class="form-label">Message <span class="text-danger">*</span></label>
-                <textarea id="announcement-message" class="form-input" rows="2" required></textarea>
+                <label class="form-label text-muted text-sm font-medium mb-1">Message <span class="text-danger">*</span></label>
+                <textarea id="announcement-message" class="input w-full px-4 py-3 rounded-md border-[rgba(255,255,255,0.1)] focus:border-primary bg-black/40" rows="3" required></textarea>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="form-group">
-                  <label class="form-label">Type</label>
-                  <select id="announcement-type" class="form-input">
+                  <label class="form-label text-muted text-sm font-medium mb-1">Type</label>
+                  <select id="announcement-type" class="input w-full px-4 py-3 rounded-md border-[rgba(255,255,255,0.1)] focus:border-primary bg-black/40">
                     <option value="info">Info</option>
                     <option value="success">Success</option>
                     <option value="warning">Warning</option>
@@ -220,31 +222,31 @@ const displayUrl = siteUrl.replace(/^https?:\/\//, '');
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Status</label>
-                  <select id="announcement-status" class="form-input">
+                  <label class="form-label text-muted text-sm font-medium mb-1">Status</label>
+                  <select id="announcement-status" class="input w-full px-4 py-3 rounded-md border-[rgba(255,255,255,0.1)] focus:border-primary bg-black/40">
                     <option value="1">Active</option>
                     <option value="0">Inactive</option>
                   </select>
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="form-group">
-                  <label class="form-label">Action URL (Optional)</label>
-                  <input type="url" id="announcement-url" class="form-input" placeholder="https://..." />
+                  <label class="form-label text-muted text-sm font-medium mb-1">Action URL (Optional)</label>
+                  <input type="url" id="announcement-url" class="input w-full px-4 py-3 rounded-md border-[rgba(255,255,255,0.1)] focus:border-primary bg-black/40" placeholder="https://..." />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Action Label</label>
-                  <input type="text" id="announcement-url-label" class="form-input" placeholder="Learn more" />
+                  <label class="form-label text-muted text-sm font-medium mb-1">Action Label</label>
+                  <input type="text" id="announcement-url-label" class="input w-full px-4 py-3 rounded-md border-[rgba(255,255,255,0.1)] focus:border-primary bg-black/40" placeholder="Learn more" />
                 </div>
               </div>
-              <div class="flex gap-2 mt-4">
-                <button type="submit" class="btn btn--primary" id="btn-save-announcement">Save</button>
-                <button type="button" class="btn btn--secondary" id="btn-cancel-announcement">Cancel</button>
+              <div class="flex gap-3 mt-2">
+                <button type="submit" class="btn btn--primary" id="btn-save-announcement" style="padding: 10px 24px;">Save Announcement</button>
+                <button type="button" class="btn btn--ghost" id="btn-cancel-announcement" style="padding: 10px 24px;">Cancel</button>
               </div>
             </form>
           </div>
 
-          <div class="admin-card" style="padding: 0; overflow: hidden; text-align: left;">
+          <div class="admin-card" style="padding: 0; overflow: hidden; text-align: left; overflow-x: auto;">
             <div id="announcements-list">
               <div class="admin-list__placeholder text-muted text-caption">Loading announcements...</div>
             </div>
@@ -649,6 +651,9 @@ const displayUrl = siteUrl.replace(/^https?:\/\//, '');
             currentFlagPage = 1;
             renderAbuseFlags();
             
+            // Load announcements
+            await loadAnnouncements();
+            
           } catch (error: any) {
             console.error("Admin load error:", error);
             if (error?.status === 403) {
@@ -741,7 +746,7 @@ const displayUrl = siteUrl.replace(/^https?:\/\//, '');
             title: document.getElementById('announcement-title').value,
             message: document.getElementById('announcement-message').value,
             type: document.getElementById('announcement-type').value,
-            isActive: parseInt(document.getElementById('announcement-status').value) === 1,
+            isActive: parseInt(document.getElementById('announcement-status').value),
             url: document.getElementById('announcement-url').value || null,
             urlLabel: document.getElementById('announcement-url-label').value || null,
           };
@@ -755,8 +760,8 @@ const displayUrl = siteUrl.replace(/^https?:\/\//, '');
             }
             document.getElementById('announcement-form-container').style.display = 'none';
             loadAnnouncements();
-          } catch (err) {
-            showToast('Failed to save announcement', 'error');
+          } catch (err: any) {
+            showToast(err.message || 'Failed to save announcement', 'error');
           }
         });
 
@@ -1056,10 +1061,15 @@ const displayUrl = siteUrl.replace(/^https?:\/\//, '');
                 // but loadSEOData ensures the saved image is fetched properly as the new fallback source of truth.
                 loadSEOData();
               } else {
-                throw new Error('Upload failed');
+                let errorMsg = 'Upload failed';
+                try {
+                  const errorData = await res.json();
+                  if (errorData.error) errorMsg = errorData.error;
+                } catch (e) {}
+                throw new Error(errorMsg);
               }
-            } catch (err) {
-              showToast('Failed to upload image', 'error');
+            } catch (err: any) {
+              showToast(err.message || 'Failed to upload image', 'error');
             } finally {
               const btn = (e.target as HTMLElement).querySelector('button');
               if (btn) btn.disabled = false;
@@ -1380,7 +1390,8 @@ const displayUrl = siteUrl.replace(/^https?:\/\//, '');
         .admin-user-row__actions .btn { width: 100%; }
         .admin-learn-grid { grid-template-columns: 1fr; }
         .admin-learn-card { padding: 18px; }
-        .admin-tabs { gap: 2px; padding: 3px; }
+        .admin-tabs { gap: 2px; padding: 3px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .admin-tabs::-webkit-scrollbar { display: none; }
         .admin-tab { padding: 8px 12px; font-size: .8rem; }
       }
     </style>

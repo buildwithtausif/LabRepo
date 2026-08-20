@@ -1,12 +1,16 @@
 # ---- Build stage ----
 FROM node:22-slim AS builder
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential python3 libvips-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy package files
 COPY server/package.json server/package-lock.json ./
 
-# Install dependencies
+# Install dependencies (sharp will compile native bindings against libvips)
 RUN npm ci
 
 # Copy server source
@@ -18,6 +22,11 @@ RUN npm run build
 
 # ---- Runtime stage ----
 FROM node:22-slim AS runtime
+
+# sharp needs libvips at runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libvips42 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

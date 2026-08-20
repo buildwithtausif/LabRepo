@@ -415,30 +415,53 @@ export function createAdminRoutes(storage: StorageAdapter) {
           }
           const data = Buffer.concat(chunks);
           
-          let processedData = data;
-          let mimetype = 'image/jpeg';
-          let extension = 'jpg';
+          // Process with sharp — convert ANY image format to optimized WebP
+          let processedData: Buffer;
+          let mimetype: string;
+          let extension: string;
 
           try {
             processedData = await sharp(data)
               .resize(1200, 630, { fit: 'inside', withoutEnlargement: true })
-              .jpeg({ quality: 80, progressive: true })
+              .webp({ quality: 80, effort: 4 })
               .toBuffer();
-          } catch (err) {
-            console.error('Sharp processing error:', err);
-            mimetype = part.mimetype as string;
-            extension = mimetype === 'image/png' ? 'png' : 'jpg';
+            
+            mimetype = 'image/webp';
+            extension = 'webp';
+            console.log(`Sharp: compressed OG image from ${data.length} to ${processedData.length} bytes (${Math.round((1 - processedData.length / data.length) * 100)}% reduction)`);
+          } catch (err: any) {
+            console.error('Sharp processing failed:', err?.message || err);
+            reply.code(400);
+            return { success: false, error: 'Image processing failed: ' + (err?.message || 'Unknown error') };
           }
           
           if (storage) {
+            const db = getDb();
+            const fullKey = 'seo.image';
+
+            // Delete the OLD OG image from storage before uploading the new one
+            try {
+              const [existing] = await db.select().from(siteSettings).where(eq(siteSettings.key, fullKey)).limit(1);
+              if (existing?.value) {
+                // Extract the storage key from the URL: "/api/public/storage/public/seo/og-image-xxx.webp" -> "public/seo/og-image-xxx.webp"
+                const oldKey = existing.value.replace('/api/public/storage/', '');
+                if (oldKey && oldKey.startsWith('public/seo/')) {
+                  await storage.delete(oldKey);
+                  console.log(`Deleted old OG image: ${oldKey}`);
+                }
+              }
+            } catch (delErr: any) {
+              console.warn('Failed to delete old OG image (non-fatal):', delErr?.message || delErr);
+            }
+
+            // Upload the new image
             const key = `public/seo/og-image-${Date.now()}.${extension}`;
             await storage.upload(key, processedData, mimetype);
             ogImageUrl = `/api/public/storage/${key}`;
             
-            const db = getDb();
-            const fullKey = 'seo.image';
-            const [existing] = await db.select().from(siteSettings).where(eq(siteSettings.key, fullKey)).limit(1);
-            if (existing) {
+            // Upsert the setting
+            const [existingRow] = await db.select().from(siteSettings).where(eq(siteSettings.key, fullKey)).limit(1);
+            if (existingRow) {
               await db.update(siteSettings).set({ value: ogImageUrl, updatedAt: new Date().toISOString() }).where(eq(siteSettings.key, fullKey));
             } else {
               await db.insert(siteSettings).values({ key: fullKey, value: ogImageUrl, updatedAt: new Date().toISOString() });

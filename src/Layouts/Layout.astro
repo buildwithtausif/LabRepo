@@ -126,6 +126,23 @@ const devRole = (Astro.locals as any).devRole || 'devadmin';
     </style>
   </head>
   <body>
+    <script is:inline>
+      (function() {
+        function updateHeaderBottom() {
+          const header = document.querySelector('.app-header');
+          if (header) {
+            document.documentElement.style.setProperty('--preview-top', header.getBoundingClientRect().bottom + 'px');
+          }
+        }
+        window.addEventListener('scroll', updateHeaderBottom, { passive: true });
+        window.addEventListener('resize', updateHeaderBottom, { passive: true });
+        document.addEventListener('DOMContentLoaded', () => {
+          updateHeaderBottom();
+          const observer = new MutationObserver(updateHeaderBottom);
+          observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+        });
+      })();
+    </script>
     <AnnouncementBanner client:load />
     {showNav && (
       <header class="app-header">
@@ -255,7 +272,7 @@ const devRole = (Astro.locals as any).devRole || 'devadmin';
               </li>
               <li class="hide-mobile" aria-hidden="true">&bull;</li>
               <li>
-                <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" rel="noopener noreferrer">
+                <a href="/contact" target="_blank">
                   Contact Us
                 </a>
               </li>

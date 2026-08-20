@@ -11,6 +11,7 @@ interface Announcement {
 
 export default function AnnouncementBanner() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -32,47 +33,68 @@ export default function AnnouncementBanner() {
     }
 
     fetchAnnouncements();
-
     return () => clearTimeout(timeoutId);
   }, []);
 
-  if (announcements.length === 0) return null;
+  const visible = announcements.filter((a) => !dismissed.has(a.id));
+  if (visible.length === 0) return null;
 
   return (
-    <div style={{ position: 'relative', zIndex: 100, width: '100%', display: 'flex', flexDirection: 'column' }}>
-      {announcements.map((a) => {
-        let style: React.CSSProperties = {
-          background: 'var(--color-primary-soft)',
-          borderColor: 'rgba(197, 27, 27, 0.4)',
-          color: 'var(--color-ink)'
+    <div style={{ position: 'relative', zIndex: 'var(--z-announcement)' }}>
+      {visible.map((a) => {
+        const colors: Record<string, { bg: string; border: string; icon: string }> = {
+          info: { bg: 'rgba(99,149,255,0.08)', border: 'rgba(99,149,255,0.2)', icon: 'bi-info-circle-fill' },
+          success: { bg: 'rgba(73,184,122,0.08)', border: 'rgba(73,184,122,0.2)', icon: 'bi-check-circle-fill' },
+          warning: { bg: 'rgba(246,182,83,0.08)', border: 'rgba(246,182,83,0.2)', icon: 'bi-exclamation-triangle-fill' },
+          critical: { bg: 'rgba(255,102,102,0.08)', border: 'rgba(255,102,102,0.2)', icon: 'bi-exclamation-octagon-fill' },
         };
-        let icon = <i className="bi bi-info-circle"></i>;
-
-        if (a.type === 'success') {
-          style.background = 'rgba(73,184,122,.14)';
-          style.borderColor = 'rgba(73,184,122,.4)';
-          icon = <i className="bi bi-check-circle"></i>;
-        } else if (a.type === 'warning') {
-          style.background = 'rgba(246,182,83,.14)';
-          style.borderColor = 'rgba(246,182,83,.4)';
-          icon = <i className="bi bi-exclamation-triangle"></i>;
-        } else if (a.type === 'critical') {
-          style.background = 'rgba(255,102,102,.14)';
-          style.borderColor = 'rgba(255,102,102,.4)';
-          icon = <i className="bi bi-exclamation-octagon"></i>;
-        }
-
+        const c = colors[a.type] || colors.info;
         return (
-          <div key={a.id} style={{ ...style, borderBottomWidth: '1px', borderBottomStyle: 'solid', backdropFilter: 'blur(12px)', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <span style={{ fontSize: '1.2em', lineHeight: 1 }}>{icon}</span>
-              <strong style={{ fontWeight: 600 }}>{a.title}</strong>
-              <span style={{ opacity: 0.9 }}>{a.message}</span>
-              {a.url && (
-                <a href={a.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '4px', textDecoration: 'underline', fontWeight: 600, color: 'inherit' }}>
-                  {a.urlLabel || 'Learn more'}
-                </a>
-              )}
+          <div key={a.id} style={{
+            width: '100%',
+            background: c.bg,
+            borderBottom: `1px solid ${c.border}`,
+            padding: '10px 16px',
+            fontSize: '0.875rem',
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: '12px',
+              maxWidth: '1200px',
+              margin: '0 auto',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: '1 1 200px', minWidth: 0 }}>
+                <i className={`bi ${c.icon}`} style={{ fontSize: '1.1rem', marginTop: '1px', flexShrink: 0 }}></i>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--color-ink)', letterSpacing: '-0.01em' }}>
+                    {a.title}
+                  </span>
+                  <span style={{ color: 'var(--color-ink-muted)', lineHeight: 1.5 }}>
+                    {a.message}
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: 'auto' }}>
+                {a.url && (
+                  <a href={a.url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-ink)', fontWeight: 600, fontSize: '0.8rem', textDecoration: 'none', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
+                  >
+                    <i className="bi bi-sparkles" style={{ fontSize: '0.85rem' }}></i>
+                    {a.urlLabel || 'Try it now'}
+                  </a>
+                )}
+                <button
+                  onClick={() => setDismissed((prev) => new Set(prev).add(a.id))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-ink-muted)', display: 'flex', alignItems: 'center' }}
+                  aria-label="Dismiss"
+                >
+                  <i className="bi bi-x-lg" style={{ fontSize: '0.9rem' }}></i>
+                </button>
+              </div>
             </div>
           </div>
         );

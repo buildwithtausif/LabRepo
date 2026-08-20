@@ -19,7 +19,7 @@ const securityConfig = getSecurityConfig();
 const TEXT_EXTENSIONS = new Set([
   'py', 'js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'c', 'cpp', 'h', 'hpp', 'java', 'kt', 'cs', 'go',
   'rs', 'swift', 'php', 'rb', 'r', 'scala', 'sql', 'html', 'css', 'scss',
-  'json', 'yaml', 'yml', 'xml', 'md', 'txt', 'csv',
+  'json', 'yaml', 'yml', 'xml', 'md', 'txt', 'csv', 'ipynb',
   'env', 'sh', 'bat', 'ps1', 'toml', 'ini', 'cfg', 'conf', 'log', 'dockerfile', 'tex', 'rtf',
 ]);
 
