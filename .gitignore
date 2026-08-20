@@ -33,3 +33,10 @@ docker-data/
 
 # production build output
 *.tar
+
+# misc
+.github/
+.vscode/
+certbot/
+public/
+Dockerfile.vercel
