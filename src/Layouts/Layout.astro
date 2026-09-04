@@ -18,7 +18,7 @@ const seoProps = { ...customSeo }
 let dynamicSeo = {};
 try {
   const backendUrl = process.env.INTERNAL_API_URL || process.env.API_URL || 'http://localhost:3001';
-  const res = await fetch(`${backendUrl}/api/admin/seo`);
+  const res = await fetch(`${backendUrl}/api/public/seo`);
   if (res.ok) {
     const data = await res.json();
     if (data.seo) dynamicSeo = data.seo;

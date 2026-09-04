@@ -10,7 +10,7 @@ export interface SEOProps {
 export const defaultSEO = {
   title: 'LabRepo — Student Workspace',
   description: 'Safely organize and retrieve your college lab work. Never lose a file again.',
-  image: '/api/public/storage/public/seo/og-image.jpg', // Default OG image
+  image: '/images/3d_folder.png', // Default OG image
   type: 'website',
   twitterHandle: '@labrepo',
   siteName: 'LabRepo',

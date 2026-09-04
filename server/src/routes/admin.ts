@@ -423,11 +423,11 @@ export function createAdminRoutes(storage: StorageAdapter) {
           try {
             processedData = await sharp(data)
               .resize(1200, 630, { fit: 'inside', withoutEnlargement: true })
-              .webp({ quality: 80, effort: 4 })
+              .jpeg({ quality: 80 })
               .toBuffer();
             
-            mimetype = 'image/webp';
-            extension = 'webp';
+            mimetype = 'image/jpeg';
+            extension = 'jpg';
             console.log(`Sharp: compressed OG image from ${data.length} to ${processedData.length} bytes (${Math.round((1 - processedData.length / data.length) * 100)}% reduction)`);
           } catch (err: any) {
             console.error('Sharp processing failed:', err?.message || err);

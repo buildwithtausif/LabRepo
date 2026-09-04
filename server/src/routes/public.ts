@@ -18,4 +18,15 @@ export async function publicRoutes(fastify: FastifyInstance) {
     
     return { announcements: active };
   });
+
+  fastify.get('/api/public/seo', async () => {
+    const db = getDb();
+    const { siteSettings } = await import('../db/schema.js');
+    const settings = await db.select().from(siteSettings).where(sql`${siteSettings.key} LIKE 'seo.%'`);
+    const seo: Record<string, string> = {};
+    for (const s of settings) {
+      seo[s.key.replace('seo.', '')] = s.value;
+    }
+    return { seo };
+  });
 }
