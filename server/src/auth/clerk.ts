@@ -23,8 +23,14 @@ async function clerkAuthPlugin(fastify: FastifyInstance): Promise<void> {
   fastify.decorateRequest('userId', '');
 
   fastify.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
-    // Skip auth for health check
-    if (request.url === '/health') return;
+    // Skip auth for health and public endpoints
+    if (
+      request.url === '/health' ||
+      request.url.startsWith('/api/announcements') ||
+      request.url.startsWith('/api/public')
+    ) {
+      return;
+    }
 
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
