@@ -35,7 +35,7 @@ docker-data/
 *.tar
 
 # misc
-.github/
+.github/prompts
 .vscode/
 certbot/
 public/

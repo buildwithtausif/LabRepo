@@ -1,0 +1,88 @@
+name: Build and Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file from Secrets and Variables
+        run: |
+          cat << EOF > .env
+          # Secrets
+          ADMIN_USER_ID=${{ secrets.ADMIN_USER_ID }}
+          AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
+          AWS_BUCKET=${{ secrets.AWS_BUCKET }}
+          AWS_ENDPOINT=${{ secrets.AWS_ENDPOINT }}
+          AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
+          CLERK_ADMIN_USER_ID=${{ secrets.CLERK_ADMIN_USER_ID }}
+          CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
+          CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          
+          # Variables
+          API_HOST=${{ vars.API_HOST }}
+          API_PORT=${{ vars.API_PORT }}
+          AWS_REGION=${{ vars.AWS_REGION }}
+          HOST=${{ vars.HOST }}
+          MAX_STORAGE_PER_USER=${{ vars.MAX_STORAGE_PER_USER }}
+          PORT=${{ vars.PORT }}
+          PUBLIC_SITE_URL=${{ vars.PUBLIC_SITE_URL }}
+          STORAGE_DRIVER=${{ vars.STORAGE_DRIVER }}
+          UPLOADS_PER_MINUTE=${{ vars.UPLOADS_PER_MINUTE }}
+          EOF
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker images
+        run: |
+          # Build only the custom images (frontend and backend)
+          # Other images (postgres, minio, nginx, certbot) will be pulled directly on EC2
+          docker compose -f docker-compose.yml build frontend backend
+
+      - name: Save Docker images to tarball
+        run: |
+          # Save the built images and compress them to save transfer time
+          docker save labrepo-frontend labrepo-backend | gzip > app-images.tar.gz
+
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "app-images.tar.gz,docker-compose.yml,.env,nginx,certbot"
+          target: "~/labrepo"
+
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/labrepo
+            
+            # Load the new images
+            echo "Loading new Docker images..."
+            gunzip -c app-images.tar.gz | docker load
+            
+            # Restart the services
+            echo "Restarting services..."
+            docker compose down
+            docker compose up -d
+            
+            # Clean up
+            echo "Cleaning up old images and tarball..."
+            docker image prune -f
+            rm app-images.tar.gz
