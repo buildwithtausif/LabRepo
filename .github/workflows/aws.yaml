@@ -62,7 +62,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "app-images.tar.gz,docker-compose.yml,.env,nginx,certbot"
-          target: "~/labrepo"
+          target: "~/clerk-astro"
 
       - name: Deploy on EC2
         uses: appleboy/ssh-action@master
@@ -71,7 +71,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/labrepo
+            cd ~/clerk-astro
             
             # Load the new images
             echo "Loading new Docker images..."
